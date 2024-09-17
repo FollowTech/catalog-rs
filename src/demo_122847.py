@@ -1,4 +1,3 @@
-import clr  # type: ignore  # noqa: F401
 import json
 import logging
 import os
@@ -9,12 +8,14 @@ import sys
 import time
 import winreg as registry
 import xml.etree.ElementTree as ET
-from pywinauto import Desktop, keyboard  # type: ignore
 from typing import Final
+
+import clr  # type: ignore  # noqa: F401
 from colorama import Fore, Style  # type: ignore
-from System.Security.Cryptography import SHA384CryptoServiceProvider  # type: ignore
-from System.IO import File, FileMode  # type: ignore
+from pywinauto import Desktop, keyboard  # type: ignore
 from System import Convert  # type: ignore
+from System.IO import File, FileMode  # type: ignore
+from System.Security.Cryptography import SHA384CryptoServiceProvider  # type: ignore
 
 
 def run_cmd(command, delay_time=0):
@@ -105,8 +106,9 @@ def handle_cab() -> str:  # 需要管理员运行
             namespace = "{openmanage/cm/dm}"
             iter_root = tree.iter(namespace + "SoftwareComponent")
             for node in iter_root:
-                path = node.get("path").split("/")[-1]
-                node.set("path", path)
+                if node is None:
+                    path = node.get("path").split("/")[-1]
+                    node.set("path", path)
             ET.register_namespace("", "openmanage/cm/dm")
             tree.write(catalog_xml_path, encoding="utf-8", xml_declaration=True)
         elif length == 0:
@@ -121,18 +123,17 @@ def handle_cab() -> str:  # 需要管理员运行
 def handle_reg(app: str, catalog):
     SHA384Provider = SHA384CryptoServiceProvider()
     dct = {}
-    result = {}
-    result["CatalogHashValues"] = []
+    result: dict[str, dict[str, str]] = {}
     dct["Key"] = str(catalog)
     f = File.Open(catalog, FileMode.Open)
     hash = SHA384Provider.ComputeHash(f)
     val = Convert.ToBase64String(hash).strip("=")
     dct["Value"] = val
-    result["CatalogHashValues"].append(dct)
+    result["CatalogHashValues"] = dct
     f.Close()
-    result = json.dumps(result)
+    str_json = json.dumps(result)
     Service_key = open_reg_key(r"SOFTWARE\Dell\UpdateService\Service")
-    set_reg_vaule(Service_key, "CustomCatalogHashValues", registry.REG_SZ, result)
+    set_reg_vaule(Service_key, "CustomCatalogHashValues", registry.REG_SZ, str_json)
     service_vaule = [
         "LastCheckTimestamp",
         "LastUpdateTimestamp",

@@ -1,12 +1,19 @@
 use data_encoding::BASE64;
-use sha3::{Digest, Sha3_384};
+use sha3::{digest::block_buffer::Error, Digest, Sha3_384};
 use std::{
-    collections::HashMap, ffi::c_char, fs::File, io::{self, BufReader}, process::Command, ptr::null_mut
+    any::Any,
+    collections::HashMap,
+    fs::File,
+    io::{self, BufReader},
+    process::Command,
+    ptr::null_mut,
 };
 use walkdir::WalkDir;
 use windows::{
     core::PCWSTR,
-    Win32::System::Registry::{self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE},
+    Win32::System::Registry::{
+        self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE,
+    },
 };
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
@@ -51,37 +58,47 @@ pub fn cab_to_xml(cab_path: &String) -> String {
     // format!("{}{}", sp_cab[0], ".xml")
 }
 
-pub fn open_reg_key(sub_key: PCWSTR) -> Result<*mut HKEY, ()> {
-    let key = null_mut::<HKEY>();
-    let l_result =
-        unsafe { Registry::RegOpenKeyExW(HKEY_LOCAL_MACHINE, sub_key, 0, KEY_ALL_ACCESS, key) };
-    if l_result.is_ok() {
-        return Ok(key);
+fn str_to_pcwstr(s: &str) -> PCWSTR {
+    let result = s
+        .to_string()
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .collect::<Vec<u16>>();
+    PCWSTR::from_raw(result.as_ptr())
+}
+
+pub fn open_reg_subkey(sub_key: &str) -> Result<HKEY, String> {
+    let mut new_key: HKEY = HKEY::default();
+    let _sub_key = str_to_pcwstr(sub_key);
+    let res = unsafe {
+        Registry::RegOpenKeyExW(
+            HKEY_LOCAL_MACHINE,
+            _sub_key,
+            0,
+            KEY_ALL_ACCESS,
+            &mut new_key,
+        )
+    }
+    .is_ok();
+    if res {
+        Ok(new_key)
     } else {
-        Err(())
+        Err(format!("Failed to turn on the \"{}\" key", sub_key))
     }
 }
 
 pub fn set_reg_vaule(
-    sub_key: PCWSTR,
-    value_name: PCWSTR,
+    sub_key: HKEY,
+    value_name: &str,
     dw_type: REG_VALUE_TYPE,
-    vaule: Option<&[u8]>,
+    vaule: &dyn Any,
 ) -> bool {
-    unsafe {
-        Registry::RegSetValueExW(
-            HKEY_LOCAL_MACHINE,
-            sub_key,
-            0,
-            dw_type,
-            lp_data,
-            vaule,
-        )
-        .is_ok()
-    }
+    let _value_name = str_to_pcwstr(value_name);
+
+    unsafe { Registry::RegSetValueExW(sub_key, _value_name, 0, dw_type, vaule) }.is_ok()
 }
 
-pub fn get_hash_sha384(xml_path: &String) -> io::Result<()> {
+pub fn get_hash_sha384(xml_path: &String) -> io::Result<Error> {
     let file = File::open(xml_path)?;
     let mut reader = BufReader::new(file);
     let mut hasher = Sha3_384::new();
@@ -89,13 +106,12 @@ pub fn get_hash_sha384(xml_path: &String) -> io::Result<()> {
     let hash = hasher.finalize();
     if let Some(base64_str) = BASE64.encode(&hash[..]).strip_suffix("=") {
         let json = format!(r#"{{"Key":{},"Value":{}\}}"#, xml_path, base64_str);
-        let p_json = Some(json as )
+        let service_key = open_reg_subkey(r"SOFTWARE\Dell\UpdateService\Service").unwrap();
         set_reg_vaule(
-            PCWSTR::from_raw(r"SOFTWARE\Dell\UpdateService\Service".as),
-            PCWSTR::from_raw("CustomCatalogHashValues".as_ptr()),
-            REG_SZ.0,
+            service_key,
+            str_to_pcwstr("CustomCatalogHashValues"),
+            REG_SZ,
             p_json,
-            json.len()
         );
     }
     Ok(())

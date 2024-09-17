@@ -1,7 +1,7 @@
 ﻿# coding=utf-8
 # 安装requirements,csg文件
-import pathlib
 import os
+import pathlib
 import subprocess
 
 cwd = os.getcwd().replace("\\", "/")
@@ -13,7 +13,7 @@ trusted-host=mirrors.aliyun.com/pypi/simple/
 "@
 New-item "$env:USERPROFILE\pip\pip.ini" -Value $pip -Force"""
 
-stdout_line = subprocess.getoutput(f"pip list")
+stdout_line = subprocess.getoutput("pip list")
 if "pywin32" not in stdout_line:
     subprocess.run(["powershell.exe", pip_ini])
     subprocess.run("python -m pip install pywin32==306 flask")
@@ -21,14 +21,15 @@ if "pywin32" not in stdout_line:
 
 try:
     import ctypes
-    import sys
     import os
     import shutil
+    import sys
     import time
-    import win32con
-    import win32clipboard
-    import win32gui
+
     import win32api
+    import win32clipboard
+    import win32con
+    import win32gui
 
 except Exception as e:
     msg = f"Exception importing modules as : {str(e)}"
