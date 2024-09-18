@@ -1,12 +1,9 @@
 use data_encoding::BASE64;
 use sha3::{digest::block_buffer::Error, Digest, Sha3_384};
 use std::{
-    any::Any,
-    collections::HashMap,
     fs::File,
     io::{self, BufReader},
     process::Command,
-    ptr::null_mut,
 };
 use walkdir::WalkDir;
 use windows::{
@@ -87,33 +84,43 @@ pub fn open_reg_subkey(sub_key: &str) -> Result<HKEY, String> {
     }
 }
 
-pub fn set_reg_vaule(
+pub trait ToOptionU8Slice {
+    fn to_option_u8(&self) -> Option<&[u8]>;
+}
+
+impl ToOptionU8Slice for String {
+    fn to_option_u8(&self) -> Option<&[u8]> {
+        if self.is_empty() {
+            None
+        } else {
+            Some(self.as_bytes())
+        }
+    }
+}
+
+pub fn set_reg_vaule<T: ToOptionU8Slice>(
     sub_key: HKEY,
     value_name: &str,
     dw_type: REG_VALUE_TYPE,
-    vaule: &dyn Any,
+    vaule: T,
 ) -> bool {
     let _value_name = str_to_pcwstr(value_name);
 
-    unsafe { Registry::RegSetValueExW(sub_key, _value_name, 0, dw_type, vaule) }.is_ok()
+    unsafe { Registry::RegSetValueExW(sub_key, _value_name, 0, dw_type, vaule.to_option_u8()) }
+        .is_ok()
 }
 
-pub fn get_hash_sha384(xml_path: &String) -> io::Result<Error> {
+pub fn get_hash_sha384(xml_path: &String) -> Result<(), io::Error> {
     let file = File::open(xml_path)?;
     let mut reader = BufReader::new(file);
     let mut hasher = Sha3_384::new();
-    io::copy(&mut reader, &mut hasher)?;
+    let _ = io::copy(&mut reader, &mut hasher);
     let hash = hasher.finalize();
     if let Some(base64_str) = BASE64.encode(&hash[..]).strip_suffix("=") {
         let json = format!(r#"{{"Key":{},"Value":{}\}}"#, xml_path, base64_str);
         let service_key = open_reg_subkey(r"SOFTWARE\Dell\UpdateService\Service").unwrap();
-        set_reg_vaule(
-            service_key,
-            str_to_pcwstr("CustomCatalogHashValues"),
-            REG_SZ,
-            p_json,
-        );
-    }
+        set_reg_vaule(service_key, "CustomCatalogHashValues", REG_SZ, json);
+    };
     Ok(())
 }
 #[cfg(test)]
