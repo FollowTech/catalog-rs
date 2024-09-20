@@ -25,6 +25,18 @@ def run_cmd(command, delay_time=0):
 
 
 def open_dcu_du(app: str, catalog):
+    print(Fore.YELLOW + "Opening dcu or du" + Style.RESET_ALL)
+    for ic in pathlib.Path(f"{os.getcwd()}").rglob("inv*.exe"):
+        if ic is not None:
+            logging.info("handle_reg: " + str(ic))
+            shutil.copy(
+                str(ic),
+                r"C:\Program Files (x86)\Dell\UpdateService\Service\InvColPC.exe",
+            )
+        else:
+            print(
+                Fore.RED + "Please put InvColPC.exe in current folder" + Style.RESET_ALL
+            )
     print(Fore.GREEN + "change window regedit successful" + Style.RESET_ALL)
     ans = input(
         "Do you want do again? Please enter (a/b/other key) \n\t(a:change regedit again)\n\t(q:quit):\n\t(other key:open Dell Update) #"
@@ -33,6 +45,7 @@ def open_dcu_du(app: str, catalog):
         sys.exit(0)
     if ans.lower() == "a":
         handle_reg(app, catalog)
+    time.sleep(2)
     keyboard.send_keys("{VK_LWIN down}" "s" "{VK_LWIN up}")
     if " " in app:
         _app = app.replace(" ", "{SPACE}")
@@ -69,8 +82,6 @@ def set_reg_vaule(key, value_name: str, type: Final, vaule):  # type: ignore
         registry.SetValueEx(key, value_name, 0, type, vaule)
     except Exception as e:
         logging.error("set_reg_vaule: " + str(e))
-    finally:
-        registry.CloseKey(key)
 
 
 def delete_reg_key_vaule(key, sub_key, value_names: list = []):
@@ -87,6 +98,9 @@ def delete_reg_key_vaule(key, sub_key, value_names: list = []):
 
 
 def handle_cab() -> str:  # 需要管理员运行
+    print(
+        Fore.YELLOW + "Hndling the cab file to generate an XML file" + Style.RESET_ALL
+    )
     length = 0
     current_dir = os.getcwd()
     catalog_xml_path = ""
@@ -106,21 +120,23 @@ def handle_cab() -> str:  # 需要管理员运行
             namespace = "{openmanage/cm/dm}"
             iter_root = tree.iter(namespace + "SoftwareComponent")
             for node in iter_root:
-                if node is None:
-                    path = node.get("path").split("/")[-1]
-                    node.set("path", path)
+                path = node.get("path").split("/")[-1]
+                node.set("path", path)
             ET.register_namespace("", "openmanage/cm/dm")
             tree.write(catalog_xml_path, encoding="utf-8", xml_declaration=True)
         elif length == 0:
             input(
                 "Place the catalog under the same directory and press <Enter>Continue"
             )
+            handle_cab()
         else:
             input("Don't put more than one catalog file and press <Enter>Continue")
+            handle_cab()
     return catalog_xml_path
 
 
 def handle_reg(app: str, catalog):
+    print(Fore.YELLOW + "Writing to the registry" + Style.RESET_ALL)
     SHA384Provider = SHA384CryptoServiceProvider()
     dct = {}
     result: dict[str, dict[str, str]] = {}
@@ -129,7 +145,7 @@ def handle_reg(app: str, catalog):
     hash = SHA384Provider.ComputeHash(f)
     val = Convert.ToBase64String(hash).strip("=")
     dct["Value"] = val
-    result["CatalogHashValues"] = dct
+    result["CatalogHashValues"] = [dct]
     f.Close()
     str_json = json.dumps(result)
     Service_key = open_reg_key(r"SOFTWARE\Dell\UpdateService\Service")
@@ -142,17 +158,6 @@ def handle_reg(app: str, catalog):
     ]
     delete_reg_key_vaule(Service_key, "IgnoreList")
     delete_reg_key_vaule(Service_key, None, service_vaule)
-    for ic in pathlib.Path(f"{os.getcwd()}").rglob("inv*.exe"):
-        if ic is not None:
-            logging.info("handle_reg: " + str(ic))
-            shutil.copy(
-                str(ic),
-                r"C:\Program Files (x86)\Dell\UpdateService\Service\InvColPC.exe",
-            )
-        else:
-            print(
-                Fore.RED + "Please put InvColPC.exe in current folder" + Style.RESET_ALL
-            )
     if app == "Dell Command Update":
         cilent_key = open_reg_key(
             r"SOFTWARE\Dell\UpdateService\Clients\CommandUpdate\Preferences\Settings\General"
@@ -160,7 +165,8 @@ def handle_reg(app: str, catalog):
         set_reg_vaule(
             cilent_key, "CustomCatalogPaths", registry.REG_MULTI_SZ, [catalog]
         )
-        set_reg_vaule(cilent_key, "EnableCatalogXML", registry.REG_DWORD, 0x00000001)
+        set_reg_vaule(cilent_key, "EnableCatalogXML", registry.REG_DWORD, 1)
+        set_reg_vaule(cilent_key, "EnableDefaultDellCatalog", registry.REG_DWORD, 0)
         open_dcu_du("Dell Command Update", catalog)
     elif app == "Dell Update":
         cilent_key = open_reg_key(
@@ -169,15 +175,15 @@ def handle_reg(app: str, catalog):
         set_reg_vaule(
             cilent_key, "CustomCatalogPaths", registry.REG_MULTI_SZ, [catalog]
         )
-        set_reg_vaule(cilent_key, "EnableCatalogXML", registry.REG_DWORD, 0x00000001)
+        set_reg_vaule(cilent_key, "EnableCatalogXML", registry.REG_DWORD, 1)
         open_dcu_du("Dell Update", catalog)
     else:
         print(Fore.RED + "请安装DU/DCU!" + Style.RESET_ALL)
 
 
 def dcu_du() -> str:
-    dcu_path = r"SOFTWARE\DELL\UpdateService\Clients\CommandUpdate"
-    du_path = r"SOFTWARE\DELL\UpdateService\Clients\Update"
+    dcu_path = r"SOFTWARE\Dell\UpdateService\Clients\CommandUpdate"
+    du_path = r"SOFTWARE\Dell\UpdateService\Clients\Update"
     if open_reg_key(dcu_path) is not None:
         return "Dell Command Update"
     elif open_reg_key(du_path) is not None:
