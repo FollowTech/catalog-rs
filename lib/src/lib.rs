@@ -1,5 +1,4 @@
 use data_encoding::BASE64;
-use serde_xml_rs::{self, EventReader, ParserConfig};
 use sha3::{Digest, Sha3_384};
 use std::{
     fs::{self, copy, File},
@@ -13,6 +12,7 @@ use windows::{
         self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE,
     },
 };
+use xm::reader::{EventReader, XmlEvent};
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
@@ -53,11 +53,27 @@ pub fn cab_to_xml(cab_path: &String) -> String {
         .map(|cab: &str| if cab.contains("cab") { &".xml" } else { cab })
         .collect::<Vec<_>>()
         .join("");
-    let config = ParserConfig::new()
-        .trim_whitespace(false)
-        .whitespace_to_characters(true);
-    let xml_file = fs::read(xml_path).unwrap()
-    let event_reader = EventReader::new_with_config(src.as_bytes(), config);
+    let file = File::open(xml_path).unwrap();
+    let file = BufReader::new(file);
+    let parser = EventReader::new(file);
+    let mut depth = 0;
+    for e in parser {
+        match e {
+            Ok(XmlEvent::StartElement { name, .. }) => {
+                println!("{:spaces$}+{name}", "", spaces = depth * 2);
+                depth += 1;
+            }
+            Ok(XmlEvent::EndElement { name }) => {
+                depth -= 1;
+                println!("{:spaces$}-{name}", "", spaces = depth * 2);
+            }
+            Err(e) => {
+                eprintln!("Error: {e}");
+                break;
+            }
+            _ => {}
+        }
+    }
     xml_path
     // let sp_cab = cab_path.splitn(2, ".").collect::<Vec<_>>();
     // format!("{}{}", sp_cab[0], ".xml")
