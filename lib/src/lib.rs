@@ -1,8 +1,9 @@
 use data_encoding::BASE64;
 use sha3::{Digest, Sha3_384};
 use std::{
-    fs::{self, copy, File},
-    io::{self, BufReader},
+    borrow::Cow,
+    fs::{copy, File},
+    io::{self, BufReader, BufWriter},
     process::Command,
 };
 use walkdir::WalkDir;
@@ -12,7 +13,8 @@ use windows::{
         self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE,
     },
 };
-use xm::reader::{EventReader, XmlEvent};
+use xml::{attribute::Attribute, name::Name, reader::EventReader, writer::XmlEvent, EventWriter};
+
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
@@ -53,25 +55,63 @@ pub fn cab_to_xml(cab_path: &String) -> String {
         .map(|cab: &str| if cab.contains("cab") { &".xml" } else { cab })
         .collect::<Vec<_>>()
         .join("");
-    let file = File::open(xml_path).unwrap();
+    let file = File::open(&xml_path).unwrap();
     let file = BufReader::new(file);
     let parser = EventReader::new(file);
-    let mut depth = 0;
+    let output = File::create(&xml_path).unwrap();
+    let output_file = BufWriter::new(output);
+    let mut xml_writer = EventWriter::new(output_file);
+
     for e in parser {
         match e {
-            Ok(XmlEvent::StartElement { name, .. }) => {
-                println!("{:spaces$}+{name}", "", spaces = depth * 2);
-                depth += 1;
-            }
-            Ok(XmlEvent::EndElement { name }) => {
-                depth -= 1;
-                println!("{:spaces$}-{name}", "", spaces = depth * 2);
+            Ok(xml_event) => {
+                if let Some(xml_writer_event) = xml_event.as_writer_event() {
+                    match &xml_writer_event {
+                        XmlEvent::StartElement {
+                            name,
+                            mut attributes,
+                            namespace: _,
+                        } => {
+                            if name.local_name == "Manifest" {
+                                let new_attr = attributes
+                                    .into_iter()
+                                    .map(|attr| {
+                                        if attr.name.local_name == "baseLocation" {
+                                            Attribute::new(Name::from("baseLocation"), "")
+                                        } else {
+                                            *attr
+                                        }
+                                    })
+                                    .collect::<Cow<_>>();
+                                XmlEvent::start_element("Manifest").attr(name, value)
+                            } else if name.local_name == "SoftwareComponent" {
+                                attributes = attributes
+                                    .into_iter()
+                                    .map(|attr| {
+                                        if attr.name.local_name == "path" {
+                                            if let Some(second) = attr.value.split('\\').nth(1) {
+                                                Attribute::new(Name::from("path"), second)
+                                            } else {
+                                                *attr
+                                            }
+                                        } else {
+                                            *attr
+                                        }
+                                    })
+                                    .collect::<Cow<_>>();
+                            } else {
+                                ()
+                            }
+                        }
+                        _ => {}
+                    };
+                    let _ = xml_writer.write(xml_writer_event);
+                }
             }
             Err(e) => {
                 eprintln!("Error: {e}");
                 break;
             }
-            _ => {}
         }
     }
     xml_path
