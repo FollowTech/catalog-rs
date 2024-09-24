@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import pathlib
+import platform
 import shutil
 import subprocess
 import sys
@@ -47,9 +48,13 @@ def open_dcu_du(app: str, catalog):
         handle_reg(app, catalog)
     time.sleep(2)
     keyboard.send_keys("{VK_LWIN down}" "s" "{VK_LWIN up}")
-    if " " in app:
-        _app = app.replace(" ", "{SPACE}")
-        keyboard.send_keys(_app)
+
+    if int(platform.version().split(".")[-1]) < 22000:
+        _app = "App:{SPACE}Update"
+    else:
+        if " " in app:
+            _app = app.replace(" ", "{SPACE}")
+    keyboard.send_keys(_app)
     keyboard.send_keys("{ENTER}")
     desktop = Desktop(backend="uia")
     if app == "Dell Command Update":
