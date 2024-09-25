@@ -12,7 +12,7 @@ use windows::{
         self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE,
     },
 };
-use xm::reader::{EventReader, XmlEvent};
+use xml::{reader::XmlEvent as XmlEventReader, writer::XmlEvent as XmlEventWriter EmitterConfig, EventReader};
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
@@ -53,17 +53,36 @@ pub fn cab_to_xml(cab_path: &String) -> String {
         .map(|cab: &str| if cab.contains("cab") { &".xml" } else { cab })
         .collect::<Vec<_>>()
         .join("");
-    let file = File::open(xml_path).unwrap();
+    let file = File::open(&xml_path).unwrap();
     let file = BufReader::new(file);
     let parser = EventReader::new(file);
     let mut depth = 0;
-    for e in parser {
-        match e {
-            Ok(XmlEvent::StartElement { name, .. }) => {
+    let output = io::stdout();
+    let mut writer = EmitterConfig::new()
+        .perform_indent(true)
+        .create_writer(output);
+    for event in parser {
+        match event {
+            Ok(XmlEventReader::StartElement {
+                name, attributes, ..
+            }) => {
+                if name.local_name.as_str() == "xxx" {
+                    attributes.into_iter().for_each(|mut attr| {
+                        if attr.name.local_name == String::from("Path") {
+                            let part = attr.value.split("\\").collect::<Vec<&str>>();
+                            if part.len() == 2 {
+                                attr.value = part[1].to_string();
+                            }
+                        }
+                    });
+                }
+                if let Err(e) = writer.write(event.unwrap()) {
+                    panic!("Write error: {e}")
+                }
                 println!("{:spaces$}+{name}", "", spaces = depth * 2);
                 depth += 1;
             }
-            Ok(XmlEvent::EndElement { name }) => {
+            Ok(XmlEventReader::EndElement { name }) => {
                 depth -= 1;
                 println!("{:spaces$}-{name}", "", spaces = depth * 2);
             }
@@ -199,7 +218,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+        let cab_path = get_catalog_path().unwrap()[0].clone();
+        let xml = cab_to_xml(&cab_path);
     }
 }
