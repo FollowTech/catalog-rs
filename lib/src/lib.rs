@@ -1,8 +1,9 @@
 use data_encoding::BASE64;
 use sha3::{Digest, Sha3_384};
 use std::{
-    fs::{self, copy, File},
-    io::{self, BufReader},
+    borrow::Cow,
+    fs::{copy, File},
+    io::{self, BufReader, BufWriter},
     process::Command,
 };
 use walkdir::WalkDir;
@@ -12,7 +13,13 @@ use windows::{
         self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE,
     },
 };
-use xm::reader::{EventReader, XmlEvent};
+use xml::{
+    attribute::Attribute,
+    name::Name,
+    reader::{EventReader, XmlEvent},
+    EventWriter,
+};
+
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
@@ -53,25 +60,98 @@ pub fn cab_to_xml(cab_path: &String) -> String {
         .map(|cab: &str| if cab.contains("cab") { &".xml" } else { cab })
         .collect::<Vec<_>>()
         .join("");
-    let file = File::open(xml_path).unwrap();
+    let file = File::open(&xml_path).unwrap();
     let file = BufReader::new(file);
     let parser = EventReader::new(file);
-    let mut depth = 0;
+    let output = File::create(&xml_path).unwrap();
+    let output_file = BufWriter::new(output);
+    let mut xml_writer = EventWriter::new(output_file);
+
     for e in parser {
         match e {
-            Ok(XmlEvent::StartElement { name, .. }) => {
-                println!("{:spaces$}+{name}", "", spaces = depth * 2);
-                depth += 1;
+            Ok(XmlEvent::StartElement {
+                name,
+                attributes,
+                namespace,
+            }) => {
+                // 检查元素是否是目标元素 "A"
+                if name.local_name == "A" {
+                    // 修改属性值
+                    let new_attributes: Vec<Attribute> = attributes
+                        .into_iter()
+                        .map(|attr| {
+                            if attr.name.local_name == "some_attribute" {
+                                Attribute {
+                                    name: attr.name,
+                                    value: "new_value".into(),
+                                }
+                            } else {
+                                attr
+                            }
+                        })
+                        .collect();
+
+                    // 写入修改后的开始元素
+                    match writer.write(WriterXmlEvent::StartElement {
+                        name,
+                        attributes: Cow::Owned(new_attributes),
+                        namespace,
+                    }) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            eprintln!("Failed to write start element: {}", e);
+                            return;
+                        }
+                    }
+                } else {
+                    // 写入原始的开始元素
+                    match writer.write(WriterXmlEvent::StartElement {
+                        name,
+                        attributes: Cow::Owned(attributes),
+                        namespace,
+                    }) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            eprintln!("Failed to write start element: {}", e);
+                            return;
+                        }
+                    }
+                }
             }
             Ok(XmlEvent::EndElement { name }) => {
-                depth -= 1;
-                println!("{:spaces$}-{name}", "", spaces = depth * 2);
+                // 写入结束元素
+                match writer.write(WriterXmlEvent::EndElement { name }) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("Failed to write end element: {}", e);
+                        return;
+                    }
+                }
+            }
+            Ok(XmlEvent::Characters(data)) => {
+                // 写入字符数据
+                match writer.write(WriterXmlEvent::Characters(&data)) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("Failed to write characters: {}", e);
+                        return;
+                    }
+                }
+            }
+            Ok(other) => {
+                // 写入其他事件
+                match writer.write(other.as_writer_event()) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("Failed to write event: {}", e);
+                        return;
+                    }
+                }
             }
             Err(e) => {
-                eprintln!("Error: {e}");
-                break;
+                eprintln!("Error parsing XML: {}", e);
+                return;
             }
-            _ => {}
         }
     }
     xml_path

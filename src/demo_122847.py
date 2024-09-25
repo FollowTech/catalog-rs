@@ -11,7 +11,7 @@ import xml.etree.ElementTree as ET
 from typing import Final
 
 import clr  # type: ignore  # noqa: F401
-from colorama import Fore, Style  # type: ignore
+from colorama import Fore, Style, init  # type: ignore
 from pywinauto import Desktop, keyboard  # type: ignore
 from System import Convert  # type: ignore
 from System.IO import File, FileMode  # type: ignore
@@ -24,19 +24,12 @@ def run_cmd(command, delay_time=0):
     return subprocess.run(command, shell=True, capture_output=True, text=True)
 
 
-def open_dcu_du(app: str, catalog):
+def open_dcu_du(app: str, catalog, ic_path):
     print(Fore.YELLOW + "Opening dcu or du" + Style.RESET_ALL)
-    for ic in pathlib.Path(f"{os.getcwd()}").rglob("inv*.exe"):
-        if ic is not None:
-            logging.info("handle_reg: " + str(ic))
-            shutil.copy(
-                str(ic),
-                r"C:\Program Files (x86)\Dell\UpdateService\Service\InvColPC.exe",
-            )
-        else:
-            print(
-                Fore.RED + "Please put InvColPC.exe in current folder" + Style.RESET_ALL
-            )
+    shutil.copy(
+        ic_path,
+        r"C:\Program Files (x86)\Dell\UpdateService\Service\InvColPC.exe",
+    )
     print(Fore.GREEN + "change window regedit successful" + Style.RESET_ALL)
     ans = input(
         "Do you want do again? Please enter (a/b/other key) \n\t(a:change regedit again)\n\t(q:quit):\n\t(other key:open Dell Update) #"
@@ -106,6 +99,16 @@ def handle_cab() -> str:  # 需要管理员运行
     catalog_xml_path = ""
     while length < 1:
         files = [f for f in os.listdir(current_dir) if f.endswith(".cab")]
+        for ic in pathlib.Path(f"{os.getcwd()}").rglob("inv*.exe"):
+            if ic is not None:
+                pass
+
+            else:
+                print(
+                    Fore.RED
+                    + "Please put InvColPC.exe in current folder"
+                    + Style.RESET_ALL
+                )
         length = len(files)
         if length == 1:
             catalog_cab = os.path.join(current_dir, files[0])
@@ -195,6 +198,7 @@ def dcu_du() -> str:
 if __name__ == "__main__":
     logging.basicConfig(filename="catalog.log", level=logging.CRITICAL)
     logging.debug("Started")
+    init(autoreset=True)
     catalog = handle_cab()
     logging.debug("Finished")
     app = dcu_du()
