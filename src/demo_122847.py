@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 import logging
 import os
@@ -100,6 +101,16 @@ def delete_reg_key_vaule(key, sub_key, value_names: list = []):
                 shutil.rmtree(r"C:\ProgramData\Dell\UpdateService\Temp")
     except Exception as e:
         logging.info("delete_reg_key_vaule: " + str(e))
+
+
+def group_files_by_suffix(folder_path: str) -> defaultdict[str, list[str]]:
+    file_groups = defaultdict(list[str])
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        if os.path.isfile(file_path):
+            suffix = os.path.splitext(filename)[1]
+            file_groups[suffix].append(file_path)
+    return file_groups
 
 
 def handle_cab() -> str:  # 需要管理员运行
