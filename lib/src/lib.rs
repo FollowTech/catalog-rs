@@ -1,8 +1,7 @@
 use data_encoding::BASE64;
 use sha3::{Digest, Sha3_384};
 use std::{
-    borrow::Cow,
-    fs::{copy, File},
+    fs::{copy, File, OpenOptions},
     io::{self, BufReader, BufWriter},
     process::Command,
 };
@@ -13,7 +12,7 @@ use windows::{
         self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE,
     },
 };
-use xm::reader::{EventReader, XmlEvent};
+use xml::{attribute::Attribute, reader::EventReader, writer::XmlEvent, EventWriter};
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
@@ -41,7 +40,7 @@ pub fn get_catalog_path() -> Option<Vec<String>> {
     return None;
 }
 
-pub fn cab_to_xml(cab_path: &String) -> String {
+pub fn cab_to_xml(cab_path: &str) -> std::io::Result<String> {
     let cmd_str = format!("expand.exe -R {cab_path} > nul ");
     Command::new("cmd")
         .arg("/c")
@@ -52,29 +51,100 @@ pub fn cab_to_xml(cab_path: &String) -> String {
     let xml_path = cab_path
         .split(".")
         .map(|cab: &str| if cab.contains("cab") { &".xml" } else { cab })
-        .collect::<Vec<_>>()
+        .collect::<Vec<&str>>()
         .join("");
-    let file = File::open(&xml_path).unwrap();
-    let file = BufReader::new(file);
-    let parser = EventReader::new(file);
-    let mut depth = 0;
-    for e in parser {
-        match e {
-            Ok(XmlEvent::StartElement { name, .. }) => {
-                println!("{:spaces$}+{name}", "", spaces = depth * 2);
-                depth += 1;
+    // 读取原始 XML 文件
+    let input_file = match File::open(&xml_path) {
+        Ok(file) => file,
+        Err(e) => return Err(e),
+    };
+    let input_reader = BufReader::new(input_file);
+
+    // 打开输出文件以写入
+    let output_file = match OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(&xml_path)
+    {
+        Ok(file) => file,
+        Err(e) => return Err(e),
+    };
+
+    let reader = EventReader::new(input_reader);
+
+    let mut event_writer = EventWriter::new(BufWriter::new(output_file));
+
+    let mut in_software = false;
+
+    for event in reader.into_iter() {
+        match event {
+            Ok(event) => {
+                if let Some(w_event) = event.as_writer_event() {
+                    match &w_event {
+                        XmlEvent::StartElement {
+                            name,
+                            attributes,
+                            namespace,
+                        } => {
+                            if name.local_name == "software" {
+                                in_software = true;
+
+                                // 修改 path 属性
+                                let mut new_attributes = Vec::new();
+                                for attr in attributes.clone().into_owned() {
+                                    if attr.name.local_name == "path" {
+                                        let new_value =
+                                            attr.value.split("\\").nth(1).unwrap_or_default();
+                                        new_attributes.push(Attribute::new(attr.name, new_value));
+                                    } else {
+                                        new_attributes.push(attr);
+                                    }
+                                }
+
+                                match event_writer.write(XmlEvent::StartElement {
+                                    name: *name,
+                                    attributes: new_attributes.into(),
+                                    namespace: std::borrow::Cow::Borrowed(namespace),
+                                }) {
+                                    Ok(_) => {}
+                                    Err(e) => eprintln!("Error: {}", e),
+                                };
+                            } else {
+                                match event_writer.write(w_event) {
+                                    Ok(_) => {}
+                                    Err(e) => eprintln!("Error: {}", e),
+                                };
+                            }
+                        }
+                        XmlEvent::EndElement { name, .. } => {
+                            if let Some(name) = name {
+                                if in_software && name.local_name == "path" {
+                                    in_software = false;
+                                    match event_writer.write(w_event) {
+                                        Ok(_) => {}
+                                        Err(e) => eprintln!("Error: {}", e),
+                                    };
+                                } else {
+                                    match event_writer.write(w_event) {
+                                        Ok(_) => {}
+                                        Err(e) => eprintln!("Error: {}", e),
+                                    };
+                                }
+                            }
+                        }
+                        _ => {
+                            match event_writer.write(w_event) {
+                                Ok(_) => {}
+                                Err(e) => eprintln!("Error: {}", e),
+                            };
+                        }
+                    }
+                }
             }
-            Ok(XmlEvent::EndElement { name }) => {
-                depth -= 1;
-                println!("{:spaces$}-{name}", "", spaces = depth * 2);
-            }
-            Err(e) => {
-                eprintln!("Error: {e}");
-                break;
-            }
+            Err(e) => eprintln!("Error: {}", e),
         }
     }
-    xml_path
+    Ok(xml_path)
     // let sp_cab = cab_path.splitn(2, ".").collect::<Vec<_>>();
     // format!("{}{}", sp_cab[0], ".xml")
 }
@@ -118,7 +188,7 @@ pub trait ToOptionU8Slice {
     fn to_option_u8(&self) -> Option<&[u8]>;
 }
 
-impl ToOptionU8Slice for String {
+impl ToOptionU8Slice for &str {
     fn to_option_u8(&self) -> Option<&[u8]> {
         if self.is_empty() {
             None
@@ -155,7 +225,7 @@ pub fn delete_reg_key_vaule(key: HKEY, sub_key: Option<&str>, value_names: Vec<&
     }
 }
 
-pub fn get_hash_sha384(xml_path: &String) -> Result<Option<String>, std::io::Error> {
+pub fn get_hash_sha384(xml_path: &str) -> Result<Option<String>, std::io::Error> {
     let file = File::open(xml_path)?;
     let mut reader = BufReader::new(file);
     let mut hasher = Sha3_384::new();
@@ -171,7 +241,7 @@ pub fn get_hash_sha384(xml_path: &String) -> Result<Option<String>, std::io::Err
     }
 }
 
-pub fn handle_reg(str_hash: String) {
+pub fn handle_reg(str_hash: &str) {
     let service_key = open_reg_subkey(r#"SOFTWARE\Dell\UpdateService\Service"#).unwrap();
     set_reg_vaule(service_key, "CustomCatalogHashValues", REG_SZ, str_hash);
     let service_vaule = vec![

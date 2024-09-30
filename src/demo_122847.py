@@ -1,4 +1,3 @@
-from collections import defaultdict
 import json
 import logging
 import os
@@ -10,6 +9,7 @@ import sys
 import time
 import winreg as registry
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 from typing import Final
 
 import clr  # type: ignore  # noqa: F401
@@ -103,8 +103,8 @@ def delete_reg_key_vaule(key, sub_key, value_names: list = []):
         logging.info("delete_reg_key_vaule: " + str(e))
 
 
-def group_files_by_suffix(folder_path: str) -> defaultdict[str, list[str]]:
-    file_groups = defaultdict(list[str])
+def group_files_by_suffix(folder_path: str) -> dict[str, list[str]]:
+    file_groups: dict[str, list[str]] = defaultdict(list[str])
     for filename in os.listdir(folder_path):
         file_path = os.path.join(folder_path, filename)
         if os.path.isfile(file_path):
@@ -136,7 +136,11 @@ def handle_cab() -> str:  # 需要管理员运行
             namespace = "{openmanage/cm/dm}"
             iter_root = tree.iter(namespace + "SoftwareComponent")
             for node in iter_root:
-                path = node.get("path").split("/")[-1]
+                path_val = node.get("path")
+                if path_val is None:
+                    continue
+                else:
+                    path = path_val.split("/")[-1]
                 node.set("path", path)
             ET.register_namespace("", "openmanage/cm/dm")
             tree.write(catalog_xml_path, encoding="utf-8", xml_declaration=True)
@@ -161,7 +165,7 @@ def handle_reg(app: str, catalog):
     hash = SHA384Provider.ComputeHash(f)
     val = Convert.ToBase64String(hash).strip("=")
     dct["Value"] = val
-    result["CatalogHashValues"] = [dct]
+    result["CatalogHashValues"] = dct
     f.Close()
     str_json = json.dumps(result)
     Service_key = open_reg_key(r"SOFTWARE\Dell\UpdateService\Service")
