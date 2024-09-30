@@ -1,8 +1,9 @@
 use data_encoding::BASE64;
 use sha3::{Digest, Sha3_384};
 use std::{
-    fs::{self, copy, File},
-    io::{self, BufReader},
+    borrow::Cow,
+    fs::{copy, File},
+    io::{self, BufReader, BufWriter},
     process::Command,
 };
 use walkdir::WalkDir;
@@ -12,7 +13,7 @@ use windows::{
         self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE,
     },
 };
-use xml::{reader::XmlEvent as XmlEventReader, writer::XmlEvent as XmlEventWriter EmitterConfig, EventReader};
+use xm::reader::{EventReader, XmlEvent};
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
@@ -57,32 +58,13 @@ pub fn cab_to_xml(cab_path: &String) -> String {
     let file = BufReader::new(file);
     let parser = EventReader::new(file);
     let mut depth = 0;
-    let output = io::stdout();
-    let mut writer = EmitterConfig::new()
-        .perform_indent(true)
-        .create_writer(output);
-    for event in parser {
-        match event {
-            Ok(XmlEventReader::StartElement {
-                name, attributes, ..
-            }) => {
-                if name.local_name.as_str() == "xxx" {
-                    attributes.into_iter().for_each(|mut attr| {
-                        if attr.name.local_name == String::from("Path") {
-                            let part = attr.value.split("\\").collect::<Vec<&str>>();
-                            if part.len() == 2 {
-                                attr.value = part[1].to_string();
-                            }
-                        }
-                    });
-                }
-                if let Err(e) = writer.write(event.unwrap()) {
-                    panic!("Write error: {e}")
-                }
+    for e in parser {
+        match e {
+            Ok(XmlEvent::StartElement { name, .. }) => {
                 println!("{:spaces$}+{name}", "", spaces = depth * 2);
                 depth += 1;
             }
-            Ok(XmlEventReader::EndElement { name }) => {
+            Ok(XmlEvent::EndElement { name }) => {
                 depth -= 1;
                 println!("{:spaces$}-{name}", "", spaces = depth * 2);
             }
@@ -90,7 +72,6 @@ pub fn cab_to_xml(cab_path: &String) -> String {
                 eprintln!("Error: {e}");
                 break;
             }
-            _ => {}
         }
     }
     xml_path
