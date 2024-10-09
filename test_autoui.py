@@ -316,8 +316,8 @@ else:
         ctypes.windll.shell32.ShellExecuteW(
             None,
             "runas",
-            unicode(sys.executable),
-            unicode(__file__),
+            unicode(sys.executable),  # noqa: F821
+            unicode(__file__),  # noqa: F821
             None,
             1,  # noqa: F821
         )

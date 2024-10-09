@@ -342,7 +342,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let cab_path = get_catalog_and_ic_path().unwrap()[0].clone();
+        let cab_path = get_catalog_and_ic_path().unwrap().0.clone();
         let xml = cab_to_xml(&cab_path);
     }
 }
