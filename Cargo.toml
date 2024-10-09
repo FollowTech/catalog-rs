@@ -1,8 +1,7 @@
-[package]
-name = "catalog-rs"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+members = ["catalog-lib", "catalog-ui"]
+resolver = "2"
 
-[dependencies]
-lib = { path = "lib" }
-iced = "0.13.1 "
+[workspace.dependencies]
+iced = "0.13.1"
+thiserror = "1.0.64"
