@@ -2,12 +2,14 @@ import json
 import logging
 import os
 import pathlib
+import platform
 import shutil
 import subprocess
 import sys
 import time
 import winreg as registry
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 from typing import Final
 
 import clr  # type: ignore  # noqa: F401
@@ -40,9 +42,13 @@ def open_dcu_du(app: str, catalog, ic_path):
         handle_reg(app, catalog)
     time.sleep(2)
     keyboard.send_keys("{VK_LWIN down}" "s" "{VK_LWIN up}")
-    if " " in app:
-        _app = app.replace(" ", "{SPACE}")
-        keyboard.send_keys(_app)
+
+    if int(platform.version().split(".")[-1]) < 22000:
+        _app = "App:{SPACE}Update"
+    else:
+        if " " in app:
+            _app = app.replace(" ", "{SPACE}")
+    keyboard.send_keys(_app)
     keyboard.send_keys("{ENTER}")
     desktop = Desktop(backend="uia")
     if app == "Dell Command Update":
@@ -90,6 +96,16 @@ def delete_reg_key_vaule(key, sub_key, value_names: list = []):
         logging.info("delete_reg_key_vaule: " + str(e))
 
 
+def group_files_by_suffix(folder_path: str) -> dict[str, list[str]]:
+    file_groups: dict[str, list[str]] = defaultdict(list[str])
+    for filename in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, filename)
+        if os.path.isfile(file_path):
+            suffix = os.path.splitext(filename)[1]
+            file_groups[suffix].append(file_path)
+    return file_groups
+
+
 def handle_cab() -> str:  # 需要管理员运行
     print(
         Fore.YELLOW + "Hndling the cab file to generate an XML file" + Style.RESET_ALL
@@ -123,7 +139,11 @@ def handle_cab() -> str:  # 需要管理员运行
             namespace = "{openmanage/cm/dm}"
             iter_root = tree.iter(namespace + "SoftwareComponent")
             for node in iter_root:
-                path = node.get("path").split("/")[-1]
+                path_val = node.get("path")
+                if path_val is None:
+                    continue
+                else:
+                    path = path_val.split("/")[-1]
                 node.set("path", path)
             ET.register_namespace("", "openmanage/cm/dm")
             tree.write(catalog_xml_path, encoding="utf-8", xml_declaration=True)
@@ -148,7 +168,7 @@ def handle_reg(app: str, catalog):
     hash = SHA384Provider.ComputeHash(f)
     val = Convert.ToBase64String(hash).strip("=")
     dct["Value"] = val
-    result["CatalogHashValues"] = [dct]
+    result["CatalogHashValues"] = dct
     f.Close()
     str_json = json.dumps(result)
     Service_key = open_reg_key(r"SOFTWARE\Dell\UpdateService\Service")
