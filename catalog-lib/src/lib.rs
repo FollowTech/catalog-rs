@@ -1,45 +1,59 @@
 pub mod error;
 use std::{
     borrow::Cow,
+    env::{self, current_dir},
     fs::{copy, File, OpenOptions},
     io::{self, BufReader, BufWriter},
+    path::Path,
     process::Command,
 };
 
 use data_encoding::BASE64;
+use error::CatalogError;
 use sha3::{Digest, Sha3_384};
-use thiserror::Error;
 use walkdir::WalkDir;
 use windows::{
     core::PCWSTR,
-    Win32::System::Registry::{
-        self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE,
+    Win32::{
+        Foundation::RECT,
+        System::Registry::{
+            self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE,
+        },
+        UI::WindowsAndMessaging::{GetDesktopWindow, GetWindowRect},
     },
 };
 use xml::{attribute::Attribute, reader::EventReader, writer::XmlEvent, EventWriter};
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+
+/// 获取桌面窗口的大小
+pub fn get_desktop_window_size() -> (i32, i32) {
+    // 获取桌面窗口句柄
+    let desktop_window = unsafe { GetDesktopWindow() };
+
+    // 获取桌面窗口的矩形区域
+    let mut rect = RECT {
+        left: 0,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+
+    unsafe {
+        let _ = GetWindowRect(desktop_window, &mut rect);
+    }
+
+    // 计算桌面窗口的宽度和高度
+    let width = rect.right - rect.left;
+    let height = rect.bottom - rect.top;
+
+    (width, height)
 }
 
-#[derive(Error, Debug)]
-pub enum CatalogError {
-    #[error("No .cab or invc.exe files found: {0}")]
-    NoFilesFound(String),
-
-    #[error("Multiple .cab and invc.exe files found: {0}\n{1}")]
-    MultipleFilesFound(String, String),
-
-    #[error(transparent)]
-    IoError(#[from] io::Error),
-}
-
-pub fn get_catalog_and_ic_path() -> Result<(String, String), CatalogError> {
+pub fn get_catalog_and_ic_paths() -> Result<(String, String), CatalogError> {
     //获取当前文件夹下以cab和exe结尾的文件
     //
     let mut cab_files = Vec::new();
     let mut exe_files = Vec::new();
-
-    for entry in WalkDir::new(".")
+    for entry in WalkDir::new(env::current_dir()?)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| !e.file_type().is_dir())
@@ -53,8 +67,9 @@ pub fn get_catalog_and_ic_path() -> Result<(String, String), CatalogError> {
     }
     if cab_files.is_empty() || exe_files.is_empty() {
         Err(CatalogError::NoFilesFound(format!(
-            "NO .cab or invc.exe files found: {}",
-            cab_files.join(", ")
+            "NO .cab or invc.exe files found: {} {}",
+            cab_files.join(", "),
+            exe_files.join(", "),
         )))
     } else if cab_files.len() > 1 || exe_files.len() > 1 {
         Err(CatalogError::MultipleFilesFound(
@@ -66,7 +81,7 @@ pub fn get_catalog_and_ic_path() -> Result<(String, String), CatalogError> {
     }
 }
 
-pub fn cab_to_xml(cab_path: &str) -> Result<String, std::io::Error> {
+pub fn cab_to_xml(cab_path: &str) -> Result<String, CatalogError> {
     let cmd_str = format!("expand.exe -R {cab_path} > nul ");
     let output = Command::new("cmd")
         .arg("/c")
@@ -75,7 +90,7 @@ pub fn cab_to_xml(cab_path: &str) -> Result<String, std::io::Error> {
         .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("cmd exec error: {}", e)))?;
 
     if !output.status.success() {
-        return Err(io::Error::new(io::ErrorKind::Other, "cmd command failed"));
+        return Err(CatalogError::ParseError("cmd command failed".into()));
     }
 
     let xml_path = format!("{}.xml", cab_path.trim_end_matches(".cab"));
@@ -310,7 +325,7 @@ pub fn du_or_dcu() -> Option<Software> {
 }
 
 pub fn process() -> Result<(), CatalogError> {
-    match get_catalog_and_ic_path() {
+    match get_catalog_and_ic_paths() {
         Ok((cab_file, ic)) => {
             let xml_path = cab_to_xml(&cab_file)?;
             let str_hash = get_hash_sha384(&xml_path)?.unwrap_or_else(|| "".to_string());
@@ -342,7 +357,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let cab_path = get_catalog_and_ic_path().unwrap().0.clone();
+        let cab_path = get_catalog_and_ic_paths().unwrap().0.clone();
         let xml = cab_to_xml(&cab_path);
     }
 }

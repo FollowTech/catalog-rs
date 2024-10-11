@@ -5,5 +5,4 @@ edition = "2021"
 
 [dependencies]
 catalog-lib = { path = "../catalog-lib" }
-iced = "0.13.1"
-thiserror = "1.0.64"
+iced = { workspace = true }

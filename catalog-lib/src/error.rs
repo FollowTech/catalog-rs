@@ -12,4 +12,13 @@ pub enum CatalogError {
 
     #[error(transparent)]
     IoError(#[from] io::Error),
+
+    #[error("Failed to parse catalog: {0}")]
+    ParseError(String),
+
+    #[error("Failed to parse catalog: {0}")]
+    InvalidCatalog(String),
+
+    #[error(transparent)]
+    IcedError(#[from] iced::Error),
 }
