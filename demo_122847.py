@@ -39,7 +39,7 @@ def open_dcu_du(app: str, catalog, ic_path):
     if ans.lower() == "q":
         sys.exit(0)
     if ans.lower() == "a":
-        handle_reg(app, catalog)
+        handle_reg(app, catalog, ic_path)
     time.sleep(2)
     keyboard.send_keys("{VK_LWIN down}" "s" "{VK_LWIN up}")
 
@@ -76,7 +76,7 @@ def open_reg_key(
     return key
 
 
-def set_reg_vaule(key, value_name: str, type: Final, vaule):  # type: ignore
+def set_reg_vaule(key, value_name: str, type, vaule):  # type: ignore
     try:
         registry.SetValueEx(key, value_name, 0, type, vaule)
     except Exception as e:
@@ -106,19 +106,19 @@ def group_files_by_suffix(folder_path: str) -> dict[str, list[str]]:
     return file_groups
 
 
-def handle_cab() -> str:  # 需要管理员运行
+def handle_cab() -> tuple[str, str]:  # 需要管理员运行
     print(
         Fore.YELLOW + "Hndling the cab file to generate an XML file" + Style.RESET_ALL
     )
     length = 0
     current_dir = os.getcwd()
     catalog_xml_path = ""
+    ic_path = ""
     while length < 1:
         files = [f for f in os.listdir(current_dir) if f.endswith(".cab")]
         for ic in pathlib.Path(f"{os.getcwd()}").rglob("inv*.exe"):
             if ic is not None:
-                pass
-
+                ic_path = str(ic)
             else:
                 print(
                     Fore.RED
@@ -155,10 +155,10 @@ def handle_cab() -> str:  # 需要管理员运行
         else:
             input("Don't put more than one catalog file and press <Enter>Continue")
             handle_cab()
-    return catalog_xml_path
+    return (catalog_xml_path, ic_path)
 
 
-def handle_reg(app: str, catalog):
+def handle_reg(app: str, catalog, ic_path):
     print(Fore.YELLOW + "Writing to the registry" + Style.RESET_ALL)
     SHA384Provider = SHA384CryptoServiceProvider()
     dct = {}
@@ -190,7 +190,7 @@ def handle_reg(app: str, catalog):
         )
         set_reg_vaule(cilent_key, "EnableCatalogXML", registry.REG_DWORD, 1)
         set_reg_vaule(cilent_key, "EnableDefaultDellCatalog", registry.REG_DWORD, 0)
-        open_dcu_du("Dell Command Update", catalog)
+        open_dcu_du("Dell Command Update", catalog, ic_path)
     elif app == "Dell Update":
         cilent_key = open_reg_key(
             r"SOFTWARE\Dell\UpdateService\Clients\Update\Preferences\Settings\General"
@@ -199,7 +199,7 @@ def handle_reg(app: str, catalog):
             cilent_key, "CustomCatalogPaths", registry.REG_MULTI_SZ, [catalog]
         )
         set_reg_vaule(cilent_key, "EnableCatalogXML", registry.REG_DWORD, 1)
-        open_dcu_du("Dell Update", catalog)
+        open_dcu_du("Dell Update", catalog, ic_path)
     else:
         print(Fore.RED + "请安装DU/DCU!" + Style.RESET_ALL)
 
@@ -219,7 +219,7 @@ if __name__ == "__main__":
     logging.basicConfig(filename="catalog.log", level=logging.CRITICAL)
     logging.debug("Started")
     init(autoreset=True)
-    catalog = handle_cab()
+    catalog, ic_path = handle_cab()
     logging.debug("Finished")
     app = dcu_du()
-    handle_reg(app=app, catalog=catalog)
+    handle_reg(app=app, catalog=catalog, ic_path=ic_path)
