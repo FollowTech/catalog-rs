@@ -119,34 +119,42 @@ def find_project_name(
     # device_with_sheet: Dict[str, List[str]] = dict()
     # print(sheet_names, '---', model_name)
     for sheet_name in sheet_names:
-        all_project_name: List[Tuple[int, str]] = list()
+        all_project_name: List[Tuple[int, str]] = []
         if (
             sheet_name.startswith('ModelName')
             or sheet_name.startswith('Histroy')
             or sheet_name.startswith('Tool')
         ):
             continue
-        sheet = wb[f'{sheet_name}']
+        sheet = wb[sheet_name]
+        try:
+            row_2 = sheet[2]
+        except IndexError:
+            continue
         index = 1
-        _cur = 1
-        for cell in sheet[2]:
+        cur_col = 1
+        for cell in row_2:
             if cell.value is None:
                 continue
             cell_value = str(cell.value)
             # print(cell_value)
             # print(longest_common_substring(model_name, cell_value.lower()))
-            # print(cell_value, '____', model_name)
-            if len(longest_common_substring(model_name, cell_value)) > 4:
-                all_project_name.append((_cur, f'{index}: {cell_value}'))
+            print(cell_value, '____', sheet_name)
+            lcs = longest_common_substring(model_name, cell_value.lower())
+            if len(lcs) > 4:
+                all_project_name.append((cur_col, f'{index}: {cell_value}'))
                 index += 1
-            _cur += 1
-        if len(all_project_name) == 0:
+            cur_col += 1
+        if not all_project_name:
             sheet.insert_cols(10)
+            sheet.column_dimensions['J'].hidden = False
             sheet.cell(row=title_row, column=10).value = model_name
             sheet.cell(row=sheet.max_row + 1, column=10).value = 'V'
             continue
         print(sheet_name, '-', [f'{name}' for _, name in all_project_name])
         selected_index = get_selected_index(len(all_project_name))
+        if selected_index < 1 or selected_index > len(all_project_name):
+            raise IndexError('选择的索引超出范围')
         selected_project = all_project_name[selected_index - 1]
         sheet_index, sel = selected_project
         # print(selected_project)
@@ -161,6 +169,8 @@ def env(is_dev: bool) -> str:
     dev = r'\\172.16.2.2\Users\JinzhongLi'
     global release
     release = r'\\172.16.2.2\Users\"Harris Xu"'
+    global model_name
+    model_name = get_model_name()
     global projects
     projects = [
         'Jedi',
@@ -171,8 +181,7 @@ def env(is_dev: bool) -> str:
         'Hawk',
         'Bandon',
         'Northbay',
-        'Selek',
-        'G5',
+        'Selek G5',
         'Mockingbird',
         'Hellcat',
         'Shuri',
@@ -202,24 +211,28 @@ def main():
     # 使用示例
     share_path = env(is_dev=False)
     local_path = 'X'
-    file = pull_fw_file(share_path, local_path, 'User1', 'Us111111')
+    # file = pull_fw_file(share_path, local_path, 'User1', 'Us111111')
 
-    if file is not None:
-        print(share_path + str(file))
+    # if file is not None:
+    #     print(share_path + str(file))
 
-    # 加载现有的Excel文件
-    if file is None:
-        print('excel is null')
-        exit(1)
+    # # 加载现有的Excel文件
+    # if file is None:
+    #     print('excel is null')
+    #     exit(1)\
+    file = './example.xlsx'  # test file
 
     project = get_inputed_project(projects=projects)
-    wb = load_workbook(filename=file, keep_vba=True)
+    wb = load_workbook(filename=file)
     sheet_names = wb.sheetnames
+    # print(sheet_names)
     sheet_modelname = wb['ModelName']
     sheet_modelname['A2'] = project
-    sheet_modelname['B2'] = '' if get_model_name() is None else get_model_name()  # type: ignore
+    # sheet_modelname['B2'] = model_name  # type: ignore
+    sheet_modelname['B2'] = 'test'  # test file
     Modified_wb = find_project_name(wb, sheet_names, str(sheet_modelname['A2'].value), title_row=2)
     Modified_wb.save(filename='Key_Device_FW_control.xlsx')
+    # wb.save(filename='Key_Device_FW_control.xlsx')
 
 
 # print(sheet_modelname['B2'].value)
