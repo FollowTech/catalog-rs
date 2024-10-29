@@ -1,10 +1,9 @@
 pub mod error;
 use std::{
     borrow::Cow,
-    env::{self, current_dir},
+    env::{self},
     fs::{copy, File, OpenOptions},
     io::{self, BufReader, BufWriter},
-    path::Path,
     process::Command,
 };
 
@@ -53,7 +52,7 @@ pub fn get_catalog_and_ic_paths() -> Result<(String, String), CatalogError> {
     //
     let mut cab_files = Vec::new();
     let mut exe_files = Vec::new();
-    for entry in WalkDir::new(env::current_dir()?)
+    for entry in WalkDir::new(env::current_dir().unwrap_or_default())
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| !e.file_type().is_dir())
@@ -130,10 +129,9 @@ pub fn cab_to_xml(cab_path: &str) -> Result<String, CatalogError> {
                                     if attr.name.local_name == "path" {
                                         let new_value =
                                             attr.value.split("\\").nth(1).unwrap_or_default();
-                                        new_attributes
-                                            .push(Attribute::new(attr.name.clone(), new_value));
+                                        new_attributes.push(Attribute::new(attr.name, new_value));
                                     } else {
-                                        new_attributes.push(attr.clone());
+                                        new_attributes.push(*attr);
                                     }
                                 }
                                 match event_writer.write(XmlEvent::StartElement {
@@ -149,9 +147,9 @@ pub fn cab_to_xml(cab_path: &str) -> Result<String, CatalogError> {
                                 new_attributes.clear();
                                 for attr in attributes.iter() {
                                     if attr.name.local_name == "baseLocation" {
-                                        new_attributes.push(Attribute::new(attr.name.clone(), ""));
+                                        new_attributes.push(Attribute::new(attr.name, ""));
                                     } else {
-                                        new_attributes.push(attr.clone());
+                                        new_attributes.push(*attr);
                                     }
                                 }
                             } else {
