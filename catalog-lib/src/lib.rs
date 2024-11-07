@@ -4,6 +4,8 @@ use std::{
     env::{self},
     fs::{copy, File, OpenOptions},
     io::{self, BufReader, BufWriter},
+    os::windows::process::CommandExt,
+    path::PathBuf,
     process::Command,
     ptr::null_mut,
 };
@@ -22,6 +24,7 @@ use windows::{
                 COINIT_APARTMENTTHREADED,
             },
             Registry::{self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE},
+            Threading::CREATE_NO_WINDOW,
         },
         UI::{
             Shell::{FileOpenDialog, IFileOpenDialog, SIGDN_FILESYSPATH},
@@ -69,12 +72,25 @@ pub fn open_file_dialog() -> windows::core::Result<String> {
     }
 }
 
-pub fn get_catalog_and_ic_paths() -> Result<(String, String), CatalogError> {
-    //获取当前文件夹下以cab和exe结尾的文件
-    //
+pub struct CatalogInfo {
+    pub cab_path: String,
+    pub ic_path: String,
+}
+
+impl CatalogInfo {
+    fn new(cab_path: String, ic_path: String) -> Self {
+        CatalogInfo { cab_path, ic_path }
+    }
+}
+
+pub fn get_catalog_and_ic_paths() -> Result<CatalogInfo, CatalogError> {
+    let current_dir = env::current_dir().unwrap_or_else(|e| {
+        eprintln!("Failed to get current directory: {}", e);
+        PathBuf::from(".")
+    });
     let mut cab_files = Vec::new();
     let mut exe_files = Vec::new();
-    for entry in WalkDir::new(env::current_dir().unwrap_or_default())
+    for entry in WalkDir::new(current_dir)
         .into_iter()
         .filter_map(Result::ok)
         .filter(|e| !e.file_type().is_dir())
@@ -86,25 +102,28 @@ pub fn get_catalog_and_ic_paths() -> Result<(String, String), CatalogError> {
             exe_files.push(f_name);
         }
     }
-    if cab_files.is_empty() || exe_files.is_empty() {
-        Err(CatalogError::NoFilesFound(format!(
-            "NO .cab or invc.exe files found: {} {}",
-            cab_files.join(", "),
-            exe_files.join(", "),
-        )))
-    } else if cab_files.len() > 1 || exe_files.len() > 1 {
-        Err(CatalogError::MultipleFilesFound(
-            cab_files.join(", "),
-            exe_files.join(", "),
-        ))
-    } else {
-        Ok((cab_files[0].clone(), exe_files[0].clone()))
+    match (cab_files.as_slice(), exe_files.as_slice()) {
+        ([cab_file], [exe_file]) => Ok(CatalogInfo::new(cab_file.clone(), exe_file.clone())),
+        ([cab_file], []) => Ok(CatalogInfo::new(
+            cab_file.clone(),
+            "No invc.exe file found".into(),
+        )),
+        ([], [exe_file]) => Ok(CatalogInfo::new(
+            "No .cab file found".into(),
+            exe_file.clone(),
+        )),
+        ([], []) => Err(CatalogError::NoFilesFound),
+        (cab_files, exe_files) if cab_files.len() > 1 || exe_files.len() > 1 => {
+            Err(CatalogError::MultipleFilesFound)
+        }
+        (_, _) => Err(CatalogError::Unexpected),
     }
 }
 
 pub fn cab_to_xml(cab_path: &str) -> Result<String, CatalogError> {
     let cmd_str = format!("expand.exe -R {cab_path} > nul ");
     let output = Command::new("cmd")
+        .creation_flags(CREATE_NO_WINDOW.0)
         .arg("/c")
         .arg(cmd_str)
         .output()
@@ -280,8 +299,8 @@ pub fn delete_reg_key_vaule(key: HKEY, sub_key: Option<&str>, value_names: Vec<&
     }
 }
 
-pub fn get_hash_sha384(xml_path: &str) -> Result<Option<String>, std::io::Error> {
-    let file = File::open(xml_path)?;
+pub fn get_hash_sha384(xml_path: String) -> Result<Option<String>, std::io::Error> {
+    let file = File::open(&xml_path)?;
     let mut reader = BufReader::new(file);
     let mut hasher = Sha3_384::new();
     let _ = io::copy(&mut reader, &mut hasher);
@@ -344,30 +363,33 @@ pub fn du_or_dcu() -> Option<Software> {
     }
 }
 
-pub fn process() -> Result<(), CatalogError> {
+pub async fn process() {
     match get_catalog_and_ic_paths() {
-        Ok((cab_file, ic)) => {
-            let xml_path = cab_to_xml(&cab_file)?;
-            let str_hash = get_hash_sha384(&xml_path)?.unwrap_or_else(|| "".to_string());
-            let _ = copy(
-                ic,
-                r"C:\Program Files (x86)\Dell\UpdateService\Service\InvColPC.exe",
-            );
-            if let Some(ref software) = du_or_dcu() {
-                match software {
-                    Software::DellUpdate { name } => {
-                        println!("{}", name);
-                        handle_reg(&str_hash, software)
-                    }
-                    Software::DellCommandUpdate { name } => {
-                        println!("{}", name);
-                        handle_reg(&str_hash, software)
+        Ok(catalog_info) => {
+            let xml_path = cab_to_xml(&catalog_info.cab_path);
+            if let Ok(xml_path) = xml_path {
+                let op_str_hash = get_hash_sha384(xml_path).unwrap_or_default();
+                let hash = op_str_hash.unwrap_or_default();
+                let _ = copy(
+                    &catalog_info.ic_path,
+                    r"C:\Program Files (x86)\Dell\UpdateService\Service\InvColPC.exe",
+                );
+                if let Some(ref software) = du_or_dcu() {
+                    match software {
+                        Software::DellUpdate { name } => {
+                            println!("{}", name);
+                            handle_reg(&hash, software)
+                        }
+                        Software::DellCommandUpdate { name } => {
+                            println!("{}", name);
+                            handle_reg(&hash, software)
+                        }
                     }
                 }
+            } else {
             }
-            Ok(())
         }
-        Err(err) => Err(err),
+        Err(_) => todo!(),
     }
 }
 
@@ -377,7 +399,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let cab_path = get_catalog_and_ic_paths().unwrap().0.clone();
+        let cab_path = get_catalog_and_ic_paths().unwrap().cab_path.clone();
         let xml = cab_to_xml(&cab_path);
     }
 }

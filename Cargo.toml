@@ -5,5 +5,5 @@ resolver = "2"
 [workspace.dependencies]
 iced_aw = { version = "0.11.0", default-features = false }
 iced = "0.13.1"
-thiserror = "1.0.64"
+thiserror = "2.0.0"
 async-std = "1.13.0"

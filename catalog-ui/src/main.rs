@@ -1,3 +1,5 @@
+// #![windows_subsystem = "windows"]
+use catalog_lib::error::CatalogError;
 use iced::{
     alignment::Horizontal,
     theme::Palette,
@@ -7,8 +9,6 @@ use iced::{
     Length::Fill,
     Task, Theme,
 };
-
-mod trait_test;
 
 #[derive(Debug)]
 enum Catalog {
@@ -35,7 +35,7 @@ enum Message {
     GoToSeleceIc,
     StartUpdate,
     GoToHomePage,
-    ButtonClicked,
+    ButtonClicked(()),
     // CreateTask,
     // FilterChanged(Filter),
     // TaskMessage(usize, TaskMessage),
@@ -46,25 +46,24 @@ enum Message {
 impl State {
     async fn load() -> State {
         let paths = catalog_lib::get_catalog_and_ic_paths();
+        // let paths: Result<(String, String), CatalogError> = Ok(("s".into(), "ss".into()));
         let (width, height) = catalog_lib::get_desktop_window_size();
         match paths {
-            Ok(paths) => State {
-                catalog_path: paths.0,
-                ic_path: paths.1,
+            Ok(catalog_info) => State {
+                catalog_path: catalog_info.cab_path,
+                ic_path: catalog_info.ic_path,
                 title: "Welcome to the Home Page".into(),
                 size: (width as f32, height as f32),
                 ..Default::default()
             },
-            Err(e) => State {
-                get_path_error: e.to_string(),
-                ..Default::default()
-            },
+            Err(e) => {
+                println!("Error: {}", e);
+                State {
+                    get_path_error: e.to_string(),
+                    ..Default::default()
+                }
+            }
         }
-        // Ok(State {
-        //     catalog_path: paths.0,
-        //     ic_path: paths.1,
-        //     title: "Welcome to the Home Page".into(),
-        // })
     }
 }
 
@@ -78,42 +77,35 @@ impl Catalog {
             Catalog::Loading => {
                 match message {
                     Message::Loaded(state) => {
-                        *self = Catalog::Loaded(State { ..state });
+                        *self = Catalog::Loaded(state);
                     }
                     _ => {}
-                }
-
-                text_input::focus("new-task")
+                };
+                Task::none()
+                // text_input::focus("new-task")
             }
             Catalog::Loaded(state) => {
                 let command = match message {
-                    Message::InputCatalogPathChanged(catalog_path) => {
-                        state.catalog_path = catalog_path;
+                    // Message::InputCatalogPathChanged(catalog_path) => {
+                    //     state.catalog_path = catalog_path;
 
-                        Task::none()
-                    }
-                    Message::InputIcPathChanged(ic_path) => {
-                        state.ic_path = ic_path;
-                        Task::none()
-                    }
+                    //     Task::none()
+                    // }
+                    // Message::InputIcPathChanged(ic_path) => {
+                    //     state.ic_path = ic_path;
+                    //     Task::none()
+                    // }
                     // Message::Loaded(state) => todo!(),
-                    Message::GoToSelectCatalog => {
-                        if let Ok(file_path) = catalog_lib::open_file_dialog() {
-                            println!("{}", file_path);
-                            state.catalog_path = file_path;
-                        }
-                        Task::none()
+                    Message::GoToSelectCatalog => handle_file_selection(&mut state.catalog_path),
+                    Message::GoToSeleceIc => handle_file_selection(&mut state.ic_path),
+                    Message::StartUpdate => {
+                        Task::perform(catalog_lib::process(), Message::ButtonClicked)
                     }
-                    Message::GoToSeleceIc => {
-                        if let Ok(file_path) = catalog_lib::open_file_dialog() {
-                            println!("{}", file_path);
-                            state.ic_path = file_path;
-                        }
-                        Task::none()
-                    }
-                    // Message::StartUpdate => todo!(),
                     // Message::GoToHomePage => todo!(),
-                    // Message::ButtonClicked => todo!(),
+                    Message::ButtonClicked(()) => {
+                        println!("Button Clicked");
+                        Task::none()
+                    }
                     _ => {
                         println!("ss");
                         Task::none()
@@ -140,7 +132,7 @@ impl Catalog {
                     text_input::Style {
                         background: Background::Color(palette.background.base.color),
                         border: Border {
-                            radius: 20.0.into(),
+                            radius: 6.0.into(),
                             width: 1.0,
                             color: palette.background.strong.color,
                         },
@@ -155,8 +147,7 @@ impl Catalog {
                     column![
                         text("Welcome to the Home Page")
                             .width(Fill)
-                            .height(size.1 / 6.0)
-                            // .size(100.0)
+                            .height(size.1 / 10.0)
                             .color([0.5, 0.5, 0.5])
                             .align_x(Center), // .on_submit(Message::CreateTask),
                         row!(
@@ -167,7 +158,8 @@ impl Catalog {
                             button(text("Catalog").align_x(Horizontal::Center))
                                 .width(100)
                                 .on_press(Message::GoToSelectCatalog),
-                        ),
+                        )
+                        .spacing(20),
                         row!(
                             text_input("请选择你的ic文件?", ic_path)
                                 // .on_input(Message::InputIcPathChanged)
@@ -177,11 +169,12 @@ impl Catalog {
                             button(text("IC").align_x(Horizontal::Center))
                                 .width(100)
                                 .on_press(Message::GoToSeleceIc),
-                        ),
+                        )
+                        .spacing(20),
                         button(text("Start Update")).on_press(Message::StartUpdate),
                     ]
                     .align_x(Horizontal::Center)
-                    .spacing(20)
+                    .spacing(50)
                     .max_width(800),
                 )
                 .padding(20)
@@ -218,6 +211,20 @@ impl Catalog {
     //         }
     //     })
     // }
+}
+
+fn handle_file_selection(path: &mut String) -> Task<Message> {
+    match catalog_lib::open_file_dialog() {
+        Ok(file_path) => {
+            println!("{}", file_path);
+            *path = file_path;
+            Task::none()
+        }
+        Err(e) => {
+            eprintln!("Error opening file dialog: {}", e);
+            Task::none()
+        }
+    }
 }
 
 fn loading_message<'a>() -> Element<'a, Message> {

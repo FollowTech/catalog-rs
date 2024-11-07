@@ -4,11 +4,14 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CatalogError {
-    #[error("No .cab or invc.exe files found: {0}")]
-    NoFilesFound(String),
+    #[error("No .cab file and invc.exe file found")]
+    NoFilesFound,
 
-    #[error("Multiple .cab and invc.exe files found: {0}\n{1}")]
-    MultipleFilesFound(String, String),
+    #[error("Multiple .cab and invc.exe files found")]
+    MultipleFilesFound,
+
+    #[error("Unexpected error")]
+    Unexpected,
 
     #[error(transparent)]
     IoError(#[from] io::Error),
