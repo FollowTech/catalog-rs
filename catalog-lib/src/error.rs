@@ -1,4 +1,4 @@
-use std::{fmt::Display, io};
+use std::io;
 
 use thiserror::Error;
 

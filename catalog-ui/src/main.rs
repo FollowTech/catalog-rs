@@ -1,17 +1,9 @@
-use std::error::Error;
-
-use catalog_lib::{error::CatalogError, get_catalog_and_ic_paths};
 use iced::{
     alignment::Horizontal,
-    application::Title,
-    color,
-    widget::{
-        button, center, column,
-        container::{self, Style},
-        row, text, text_input, Container as WidgetContainer,
-    },
+    theme::Palette,
+    widget::{button, center, column, container, row, text, text_input},
     Alignment::Center,
-    Border, Element,
+    Background, Border, Element,
     Length::Fill,
     Task, Theme,
 };
@@ -26,6 +18,7 @@ enum Catalog {
 
 #[derive(Debug, Default, Clone)]
 struct State {
+    size: (f32, f32),
     title: String,
     catalog_path: String,
     ic_path: String,        // dirty: bool,
@@ -33,7 +26,7 @@ struct State {
 }
 
 #[derive(Debug, Clone)]
-enum Message1 {
+enum Message {
     Loaded(State),
     // Saved(Result<(), SaveError>),
     InputCatalogPathChanged(String),
@@ -41,6 +34,8 @@ enum Message1 {
     GoToSelectCatalog,
     GoToSeleceIc,
     StartUpdate,
+    GoToHomePage,
+    ButtonClicked,
     // CreateTask,
     // FilterChanged(Filter),
     // TaskMessage(usize, TaskMessage),
@@ -50,12 +45,14 @@ enum Message1 {
 
 impl State {
     async fn load() -> State {
-        let paths = get_catalog_and_ic_paths();
+        let paths = catalog_lib::get_catalog_and_ic_paths();
+        let (width, height) = catalog_lib::get_desktop_window_size();
         match paths {
             Ok(paths) => State {
                 catalog_path: paths.0,
                 ic_path: paths.1,
                 title: "Welcome to the Home Page".into(),
+                size: (width as f32, height as f32),
                 ..Default::default()
             },
             Err(e) => State {
@@ -72,18 +69,15 @@ impl State {
 }
 
 impl Catalog {
-    fn new() -> (Self, Task<Message1>) {
-        (
-            Self::Loading,
-            Task::perform(State::load(), Message1::Loaded),
-        )
+    fn new() -> (Self, Task<Message>) {
+        (Self::Loading, Task::perform(State::load(), Message::Loaded))
     }
 
-    fn update(&mut self, message: Message1) -> Task<Message1> {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match self {
             Catalog::Loading => {
                 match message {
-                    Message1::Loaded(state) => {
+                    Message::Loaded(state) => {
                         *self = Catalog::Loaded(State { ..state });
                     }
                     _ => {}
@@ -93,19 +87,37 @@ impl Catalog {
             }
             Catalog::Loaded(state) => {
                 let command = match message {
-                    Message1::InputCatalogPathChanged(catalog_path) => {
+                    Message::InputCatalogPathChanged(catalog_path) => {
                         state.catalog_path = catalog_path;
 
                         Task::none()
                     }
-                    Message1::InputIcPathChanged(ic_path) => {
+                    Message::InputIcPathChanged(ic_path) => {
                         state.ic_path = ic_path;
                         Task::none()
                     }
-                    Message1::Loaded(state) => todo!(),
-                    Message1::GoToSelectCatalog => todo!(),
-                    Message1::GoToSeleceIc => todo!(),
-                    Message1::StartUpdate => todo!(),
+                    // Message::Loaded(state) => todo!(),
+                    Message::GoToSelectCatalog => {
+                        if let Ok(file_path) = catalog_lib::open_file_dialog() {
+                            println!("{}", file_path);
+                            state.catalog_path = file_path;
+                        }
+                        Task::none()
+                    }
+                    Message::GoToSeleceIc => {
+                        if let Ok(file_path) = catalog_lib::open_file_dialog() {
+                            println!("{}", file_path);
+                            state.ic_path = file_path;
+                        }
+                        Task::none()
+                    }
+                    // Message::StartUpdate => todo!(),
+                    // Message::GoToHomePage => todo!(),
+                    // Message::ButtonClicked => todo!(),
+                    _ => {
+                        println!("ss");
+                        Task::none()
+                    }
                 };
 
                 Task::batch(vec![command])
@@ -113,7 +125,7 @@ impl Catalog {
         }
     }
 
-    fn view(&self) -> Element<'_, Message1> {
+    fn view(&self) -> Element<'_, Message> {
         match self {
             Catalog::Loading => loading_message(),
             Catalog::Loaded(State {
@@ -121,49 +133,54 @@ impl Catalog {
                 catalog_path,
                 ic_path,
                 get_path_error,
+                size,
             }) => {
-                let border_sytle = |theme: &Theme| {
+                let border_sytle = |theme: &Theme, status: text_input::Status| {
                     let palette = theme.extended_palette();
-                    Style {
-                        background: Some(palette.background.weak.color.into()),
+                    text_input::Style {
+                        background: Background::Color(palette.background.base.color),
                         border: Border {
-                            width: 4.0,
                             radius: 20.0.into(),
+                            width: 1.0,
                             color: palette.background.strong.color,
                         },
-                        ..Style::default()
+                        icon: palette.background.weak.text,
+                        placeholder: palette.background.strong.color,
+                        value: palette.background.base.text,
+                        selection: palette.primary.weak.color,
                     }
                 };
 
-                WidgetContainer::new(
-                    column!(
+                container(
+                    column![
                         text("Welcome to the Home Page")
                             .width(Fill)
-                            .size(100)
+                            .height(size.1 / 6.0)
+                            // .size(100.0)
                             .color([0.5, 0.5, 0.5])
                             .align_x(Center), // .on_submit(Message::CreateTask),
                         row!(
-                            text("请选择你的catalog cab文件?")
+                            text_input("请选择你的catalog cab文件?", catalog_path)
                                 // .on_input(Message1::InputCatalogPathChanged)
-                                // .padding(15)
-                                .size(30)
+                                .style(border_sytle)
                                 .align_x(Center),
                             button(text("Catalog").align_x(Horizontal::Center))
                                 .width(100)
-                                .on_press(Message1::GoToSelectCatalog),
+                                .on_press(Message::GoToSelectCatalog),
                         ),
                         row!(
                             text_input("请选择你的ic文件?", ic_path)
-                                .on_input(Message1::InputIcPathChanged)
+                                // .on_input(Message::InputIcPathChanged)
                                 // .on_submit(Message::CreateTask)
-                                .padding(15)
-                                .size(30)
+                                .style(border_sytle)
                                 .align_x(Center),
                             button(text("IC").align_x(Horizontal::Center))
                                 .width(100)
-                                .on_press(Message1::GoToSeleceIc),
+                                .on_press(Message::GoToSeleceIc),
                         ),
-                    )
+                        button(text("Start Update")).on_press(Message::StartUpdate),
+                    ]
+                    .align_x(Horizontal::Center)
                     .spacing(20)
                     .max_width(800),
                 )
@@ -173,6 +190,10 @@ impl Catalog {
                 .into()
             }
         }
+    }
+
+    fn theme(&self) -> Theme {
+        Theme::custom("CatalogTheme".into(), Palette::DARK)
     }
 
     // fn subscription(&self) -> Subscription<Message> {
@@ -199,132 +220,8 @@ impl Catalog {
     // }
 }
 
-fn loading_message<'a>() -> Element<'a, Message1> {
+fn loading_message<'a>() -> Element<'a, Message> {
     center(text("Loading...").width(Fill).align_x(Center).size(50)).into()
-}
-
-/// 应用程序的状态
-#[derive(Debug)]
-struct AppState {
-    current_page: Page,
-    catalog_path_field: String,
-    ic_path_field: String,
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        let de: AppState = match catalog_lib::get_catalog_and_ic_paths() {
-            Ok((catlog_path, ic_path)) => Self {
-                current_page: Page::default(),
-                catalog_path_field: catlog_path,
-                ic_path_field: ic_path,
-            },
-            Err(e) => {
-                let hit = match e {
-                    CatalogError::NoFilesFound(e) => e,
-                    CatalogError::MultipleFilesFound(e1, e2) => format!("{}{}", e1, e2),
-                    CatalogError::IoError(e) => "io error".into(),
-                    e => unreachable!(),
-                };
-                Self {
-                    current_page: Page::default(),
-                    catalog_path_field: "请选择你的Cab".into(),
-                    ic_path_field: "请选择你的ic".into(),
-                }
-            }
-        };
-        de
-    }
-}
-
-/// 应用程序的消息
-#[derive(Debug, Clone)]
-enum Message {
-    GoToHomePage,
-    GoToSelectorPage,
-    CatalogFieldChanged(String),
-    IcFieldChanged(String),
-    ButtonClicked,
-}
-
-#[derive(Debug, Default)]
-/// 页面枚举
-enum Page {
-    #[default]
-    HomePage,
-    SelectorPage,
-}
-
-/// 主页视图
-fn home_page(state: &AppState) -> Element<'_, Message> {
-    WidgetContainer::new(
-        column!(
-            text("Welcome to the Home Page")
-                .size(50)
-                .color(color!(0x0000FF)),
-            row!(
-                text_input("Input 1", &state.catalog_path_field)
-                    .on_input(Message::CatalogFieldChanged),
-                button(text("Catalog").align_x(Horizontal::Center))
-                    .width(100)
-                    .on_press(Message::GoToSelectorPage),
-            ),
-            row!(
-                text_input("Input 2", &state.ic_path_field).on_input(Message::IcFieldChanged),
-                button(text("Ic").align_x(Center))
-                    .width(100)
-                    .on_press(Message::GoToSelectorPage),
-            ),
-            button(text("Go to Selector Page")).on_press(Message::GoToSelectorPage)
-        )
-        .spacing(20)
-        .align_x(Horizontal::Center),
-    )
-    .padding(20)
-    .center_x(Fill)
-    .center_y(Fill)
-    .into()
-}
-
-/// 选择页面视图
-fn selector_page() -> Element<'static, Message> {
-    let content = column!(
-        text("Welcome to the Selector Page"),
-        button(text("Go to Home Page")).on_press(Message::GoToHomePage),
-    )
-    .spacing(20);
-    WidgetContainer::new(content)
-        .width(Fill)
-        .height(Fill)
-        .center_x(Fill)
-        .center_y(Fill)
-        .into()
-}
-
-/// 更新逻辑
-fn update(state: &mut AppState, message: Message) {
-    match message {
-        Message::GoToHomePage => state.current_page = Page::HomePage,
-        Message::GoToSelectorPage => state.current_page = Page::SelectorPage,
-        Message::CatalogFieldChanged(input) => state.catalog_path_field = input,
-        Message::IcFieldChanged(input) => state.ic_path_field = input,
-        Message::ButtonClicked => {
-            // 处理按钮点击事件
-            println!("Button clicked!");
-        }
-    }
-}
-
-/// 视图逻辑
-fn view(state: &AppState) -> Element<Message> {
-    match state.current_page {
-        Page::HomePage => home_page(state),
-        Page::SelectorPage => selector_page(),
-    }
-}
-
-fn theme(_state: &AppState) -> Theme {
-    Theme::TokyoNight
 }
 
 /// 主函数
@@ -342,5 +239,6 @@ fn main() -> iced::Result {
         // .subscription(Todos::subscription)
         // .font(include_bytes!("../fonts/icons.ttf").as_slice())
         .window_size(((screen_width / 2) as f32, (screen_height / 2) as f32))
+        .theme(Catalog::theme)
         .run_with(Catalog::new)
 }

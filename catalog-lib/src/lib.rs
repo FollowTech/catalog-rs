@@ -5,6 +5,7 @@ use std::{
     fs::{copy, File, OpenOptions},
     io::{self, BufReader, BufWriter},
     process::Command,
+    ptr::null_mut,
 };
 
 use data_encoding::BASE64;
@@ -15,10 +16,17 @@ use windows::{
     core::PCWSTR,
     Win32::{
         Foundation::RECT,
-        System::Registry::{
-            self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE,
+        System::{
+            Com::{
+                CoCreateInstance, CoInitializeEx, CoUninitialize, CLSCTX_INPROC_SERVER,
+                COINIT_APARTMENTTHREADED,
+            },
+            Registry::{self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE},
         },
-        UI::WindowsAndMessaging::{GetDesktopWindow, GetWindowRect},
+        UI::{
+            Shell::{FileOpenDialog, IFileOpenDialog, SIGDN_FILESYSPATH},
+            WindowsAndMessaging::{GetDesktopWindow, GetForegroundWindow, GetWindowRect},
+        },
     },
 };
 use xml::{attribute::Attribute, reader::EventReader, writer::XmlEvent, EventWriter};
@@ -45,6 +53,20 @@ pub fn get_desktop_window_size() -> (i32, i32) {
     let height = rect.bottom - rect.top;
 
     (width, height)
+}
+
+pub fn open_file_dialog() -> windows::core::Result<String> {
+    unsafe {
+        let _ = CoInitializeEx(Some(null_mut()), COINIT_APARTMENTTHREADED);
+        let file_dialog: IFileOpenDialog =
+            CoCreateInstance(&FileOpenDialog, None, CLSCTX_INPROC_SERVER)?;
+        let hwnd = GetForegroundWindow();
+        file_dialog.Show(hwnd)?;
+        let result = file_dialog.GetResult()?;
+        let file_path = result.GetDisplayName(SIGDN_FILESYSPATH)?.to_string()?;
+        CoUninitialize();
+        Ok(file_path)
+    }
 }
 
 pub fn get_catalog_and_ic_paths() -> Result<(String, String), CatalogError> {

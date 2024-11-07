@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font
 
 
 def run_command(command: str) -> Optional[str]:
@@ -21,8 +22,9 @@ def run_command(command: str) -> Optional[str]:
         return None
 
 
-def get_model_name() -> Optional[str]:
-    return run_command('(Get-WmiObject -Class win32_computersystem).model')
+def get_sys_model() -> str:
+    sys_model = run_command('(Get-WmiObject -Class win32_computersystem).model')
+    return '' if sys_model is None else sys_model
 
 
 def find_rosa_fw_folders(base_dir: Path) -> Optional[Path]:
@@ -124,32 +126,38 @@ def find_project_name(
             sheet_name.startswith('ModelName')
             or sheet_name.startswith('Histroy')
             or sheet_name.startswith('Tool')
+            or sheet_name.startswith('Cable')
         ):
             continue
         sheet = wb[sheet_name]
+
         try:
             row_2 = sheet[2]
         except IndexError:
-            continue
+            raise IndexError(f'{sheet}表没有第二行')
         index = 1
         cur_col = 1
         for cell in row_2:
+            if sheet_name.startswith('Adapter'):
+                font = Font(name='Calibri', size=14, bold=True, italic=False)
+                cell.font = font
             if cell.value is None:
                 continue
             cell_value = str(cell.value)
             # print(cell_value)
             # print(longest_common_substring(model_name, cell_value.lower()))
-            print(cell_value, '____', sheet_name)
+            # print(cell_value, '____', sheet_name)
             lcs = longest_common_substring(model_name, cell_value.lower())
             if len(lcs) > 4:
                 all_project_name.append((cur_col, f'{index}: {cell_value}'))
                 index += 1
             cur_col += 1
         if not all_project_name:
-            sheet.insert_cols(10)
-            sheet.column_dimensions['J'].hidden = False
-            sheet.cell(row=title_row, column=10).value = model_name
-            sheet.cell(row=sheet.max_row + 1, column=10).value = 'V'
+            sheet.insert_cols(8)
+            # sheet.column_dimensions['H'].hidden = False
+            sheet.cell(row=title_row, column=8).value = model_name
+            sheet.cell(row=sheet.max_row + 1, column=8).value = 'V'
+            sheet.cell(row=sheet.max_row, column=1, value=sheet[f'A{sheet.max_row-1}'].value)
             continue
         print(sheet_name, '-', [f'{name}' for _, name in all_project_name])
         selected_index = get_selected_index(len(all_project_name))
@@ -158,9 +166,16 @@ def find_project_name(
         selected_project = all_project_name[selected_index - 1]
         sheet_index, sel = selected_project
         # print(selected_project)
-        sheet.cell(row=title_row, column=sheet_index).value = model_name
+        cell = sheet.cell(row=title_row, column=sheet_index, value=model_name)
+        # if sheet_name == 'Battery':
+        #     break
         # device_with_sheet.setdefault(sheet_name, list()).extend(all_project_name)
     # print(device_with_sheet)
+    copied_sheet = wb.copy_worksheet(sheet)
+    wb.remove(sheet)
+    copied_sheet.title = 'Adapter'
+    wb.move_sheet('Adapter', offset=-2)
+    print(wb.sheetnames)
     return wb
 
 
@@ -169,8 +184,6 @@ def env(is_dev: bool) -> str:
     dev = r'\\172.16.2.2\Users\JinzhongLi'
     global release
     release = r'\\172.16.2.2\Users\"Harris Xu"'
-    global model_name
-    model_name = get_model_name()
     global projects
     projects = [
         'Jedi',
@@ -211,27 +224,29 @@ def main():
     # 使用示例
     share_path = env(is_dev=False)
     local_path = 'X'
-    # file = pull_fw_file(share_path, local_path, 'User1', 'Us111111')
+    file = pull_fw_file(share_path, local_path, 'User1', 'Us111111')
 
-    # if file is not None:
-    #     print(share_path + str(file))
+    if file is not None:
+        print(share_path + str(file))
 
-    # # 加载现有的Excel文件
-    # if file is None:
-    #     print('excel is null')
-    #     exit(1)\
-    file = './example.xlsx'  # test file
+    # 加载现有的Excel文件
+    if file is None:
+        print('excel is null')
+        exit(1)
+    # file = './Rosa Key Device FW control_2024-10-28.xlsx'  # test file
 
     project = get_inputed_project(projects=projects)
-    wb = load_workbook(filename=file)
+    sys_model = get_sys_model()
+    wb = load_workbook(filename=file, data_only=True)
     sheet_names = wb.sheetnames
-    # print(sheet_names)
+    print(sheet_names)
     sheet_modelname = wb['ModelName']
-    sheet_modelname['A2'] = project
-    # sheet_modelname['B2'] = model_name  # type: ignore
-    sheet_modelname['B2'] = 'test'  # test file
-    Modified_wb = find_project_name(wb, sheet_names, str(sheet_modelname['A2'].value), title_row=2)
-    Modified_wb.save(filename='Key_Device_FW_control.xlsx')
+    sheet_modelname['A3'] = project
+    sheet_modelname['B3'] = sys_model  # type: ignore
+    # sheet_modelname['B2'] = 'test'  # test file
+    Modified_wb = find_project_name(wb, sheet_names, model_name=project, title_row=2)
+    Modified_wb.save(filename='./Key_Device_FW_control.xlsx')
+    Modified_wb.close()
     # wb.save(filename='Key_Device_FW_control.xlsx')
 
 

@@ -3,3 +3,8 @@
 /catalog-ui/target
 /uv*
 /README*
+/output
+/.vscode
+/.venv
+/.ipynb_checkpoints
+/.mypy_cache
