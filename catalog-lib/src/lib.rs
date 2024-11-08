@@ -83,11 +83,8 @@ impl CatalogInfo {
     }
 }
 
-pub fn get_catalog_and_ic_paths() -> Result<CatalogInfo, CatalogError> {
-    let current_dir = env::current_dir().unwrap_or_else(|e| {
-        eprintln!("Failed to get current directory: {}", e);
-        PathBuf::from(".")
-    });
+pub fn get_catalog_and_ic_paths(current_dir: PathBuf) -> Result<CatalogInfo, CatalogError> {
+    println!("{:?}", current_dir);
     let mut cab_files = Vec::new();
     let mut exe_files = Vec::new();
     for entry in WalkDir::new(current_dir)
@@ -95,7 +92,7 @@ pub fn get_catalog_and_ic_paths() -> Result<CatalogInfo, CatalogError> {
         .filter_map(Result::ok)
         .filter(|e| !e.file_type().is_dir())
     {
-        let f_name = String::from(entry.file_name().to_string_lossy());
+        let f_name = String::from(entry.path().to_string_lossy());
         if f_name.ends_with(".cab") {
             cab_files.push(f_name);
         } else if f_name.ends_with(".exe") && f_name.to_lowercase().contains("invc") {
@@ -120,10 +117,10 @@ pub fn get_catalog_and_ic_paths() -> Result<CatalogInfo, CatalogError> {
     }
 }
 
-pub fn cab_to_xml(cab_path: &str) -> Result<String, CatalogError> {
-    let cmd_str = format!("expand.exe -R {cab_path} > nul ");
+pub fn cab_to_xml(cab_path: &str) -> Result<PathBuf, CatalogError> {
+    let cmd_str = format!("expand.exe -R {cab_path}");
     let output = Command::new("cmd")
-        .creation_flags(CREATE_NO_WINDOW.0)
+        // .creation_flags(CREATE_NO_WINDOW.0)
         .arg("/c")
         .arg(cmd_str)
         .output()
@@ -134,100 +131,124 @@ pub fn cab_to_xml(cab_path: &str) -> Result<String, CatalogError> {
     }
 
     let xml_path = format!("{}.xml", cab_path.trim_end_matches(".cab"));
-    // 读取原始 XML 文件
+    Ok(xml_path.into())
+}
+
+fn handle_xml(xml_path: PathBuf) -> Result<PathBuf, CatalogError> {
     let input_file = File::open(&xml_path)?;
     let input_reader = BufReader::new(input_file);
-
+    let reader = EventReader::new(input_reader);
     // 打开输出文件以写入
     let output_file = OpenOptions::new()
         .write(true)
         .truncate(true)
         .open(&xml_path)?;
 
-    let reader = EventReader::new(input_reader);
-
     let mut event_writer = EventWriter::new(BufWriter::new(output_file));
 
     let mut in_software = false;
     let mut in_maniface = false;
 
-    for event in reader.into_iter() {
+    let mut depth = 0;
+
+    for event in reader {
         match event {
             Ok(event) => {
-                if let Some(w_event) = event.as_writer_event() {
-                    match w_event {
-                        XmlEvent::StartElement {
-                            name,
-                            ref attributes,
-                            ref namespace,
-                        } => {
-                            let mut new_attributes = Vec::new();
-                            if name.local_name == "SoftwareComponent" {
-                                in_software = true;
-                                // 修改 path 属性
-                                new_attributes.clear();
-                                for attr in attributes.iter() {
-                                    if attr.name.local_name == "path" {
-                                        let new_value =
-                                            attr.value.split("\\").nth(1).unwrap_or_default();
-                                        new_attributes.push(Attribute::new(attr.name, new_value));
-                                    } else {
-                                        new_attributes.push(*attr);
-                                    }
-                                }
-                                match event_writer.write(XmlEvent::StartElement {
-                                    name,
-                                    attributes: Cow::Owned(new_attributes),
-                                    namespace: namespace.clone(),
-                                }) {
-                                    Ok(_) => {}
-                                    Err(e) => eprintln!("Error: {}", e),
-                                };
-                            } else if name.local_name == "Manufacturer" {
-                                in_maniface = true;
-                                new_attributes.clear();
-                                for attr in attributes.iter() {
-                                    if attr.name.local_name == "baseLocation" {
-                                        new_attributes.push(Attribute::new(attr.name, ""));
-                                    } else {
-                                        new_attributes.push(*attr);
-                                    }
-                                }
-                            } else {
-                                match event_writer.write(w_event) {
-                                    Ok(_) => {}
-                                    Err(e) => eprintln!("Error: {}", e),
-                                };
-                            }
-                        }
-                        XmlEvent::EndElement { name, .. } => {
-                            if let Some(name) = name {
-                                if in_software && name.local_name == "path" {
-                                    in_software = false;
-                                } else if in_maniface && name.local_name == "Manufacturer" {
-                                    in_maniface = false;
-                                }
-                                match event_writer.write(w_event) {
-                                    Ok(_) => {}
-                                    Err(e) => eprintln!("Error: {}", e),
-                                };
-                            }
-                        }
-                        _ => {
-                            match event_writer.write(w_event) {
-                                Ok(_) => {}
-                                Err(e) => eprintln!("Error: {}", e),
-                            };
-                        }
+                match event {
+                    xml::reader::XmlEvent::StartDocument {
+                        version,
+                        encoding,
+                        standalone,
+                    } => {
+                        println!("{:spaces$}+{version}", "", spaces = depth * 2);
+                        depth += 1;
                     }
+                    xml::reader::XmlEvent::EndDocument => todo!(),
+                    xml::reader::XmlEvent::ProcessingInstruction { name, data } => todo!(),
+                    xml::reader::XmlEvent::StartElement {
+                        name,
+                        attributes,
+                        namespace,
+                    } => todo!(),
+                    xml::reader::XmlEvent::EndElement { name } => todo!(),
+                    xml::reader::XmlEvent::CData(_) => todo!(),
+                    xml::reader::XmlEvent::Comment(_) => todo!(),
+                    xml::reader::XmlEvent::Characters(_) => todo!(),
+                    xml::reader::XmlEvent::Whitespace(_) => todo!(),
                 }
+
+                //         if let Some(w_event) = event.as_writer_event() {
+                // match w_event {
+                //     XmlEvent::StartElement {
+                //         name,
+                //         ref attributes,
+                //         ref namespace,
+                //     } => {
+                //         let mut new_attributes = Vec::new();
+                //         if name.local_name == "SoftwareComponent" {
+                //             in_software = true;
+                //             // 修改 path 属性
+                //             new_attributes.clear();
+                //             for attr in attributes.iter() {
+                //                 if attr.name.local_name == "path" {
+                //                     let new_value =
+                //                         attr.value.split("\\").nth(1).unwrap_or_default();
+                //                     new_attributes.push(Attribute::new(attr.name, new_value));
+                //                 } else {
+                //                     new_attributes.push(*attr);
+                //                 }
+                //             }
+                //             match event_writer.write(XmlEvent::StartElement {
+                //                 name,
+                //                 attributes: Cow::Owned(new_attributes),
+                //                 namespace: namespace.clone(),
+                //             }) {
+                //                 Ok(_) => {}
+                //                 Err(e) => eprintln!("Error: {}", e),
+                //             };
+                //         } else if name.local_name == "Manufacturer" {
+                //             in_maniface = true;
+                //             new_attributes.clear();
+                //             for attr in attributes.iter() {
+                //                 if attr.name.local_name == "baseLocation" {
+                //                     new_attributes.push(Attribute::new(attr.name, ""));
+                //                 } else {
+                //                     new_attributes.push(*attr);
+                //                 }
+                //             }
+                //         } else {
+                //             match event_writer.write(w_event) {
+                //                 Ok(_) => {}
+                //                 Err(e) => eprintln!("Error: {}", e),
+                //             };
+                //         }
+                //     }
+                //     XmlEvent::EndElement { name, .. } => {
+                //         if let Some(name) = name {
+                //             if in_software && name.local_name == "path" {
+                //                 in_software = false;
+                //             } else if in_maniface && name.local_name == "Manufacturer" {
+                //                 in_maniface = false;
+                //             }
+                //             match event_writer.write(w_event) {
+                //                 Ok(_) => {}
+                //                 Err(e) => eprintln!("Error: {}", e),
+                //             };
+                //         }
+                //     }
+                //     _ => {
+                //         match event_writer.write(w_event) {
+                //             Ok(_) => {}
+                //             Err(e) => eprintln!("Error: {}", e),
+                //         };
+                //     }
+                // }
+                // }
             }
-            Err(e) => eprintln!("Error: {}", e),
+            Err(e) => eprintln!("match event //{==={}", e),
         }
     }
     Ok(xml_path)
-    // let sp_cab = cab_path.splitn(2, ".").collect::<Vec<_>>();
-    // format!("{}{}", sp_cab[0], ".xml")
 }
 
 fn str_to_pcwstr(s: &str) -> PCWSTR {
@@ -299,7 +320,7 @@ pub fn delete_reg_key_vaule(key: HKEY, sub_key: Option<&str>, value_names: Vec<&
     }
 }
 
-pub fn get_hash_sha384(xml_path: String) -> Result<Option<String>, std::io::Error> {
+pub fn get_hash_sha384(xml_path: PathBuf) -> Result<Option<String>, std::io::Error> {
     let file = File::open(&xml_path)?;
     let mut reader = BufReader::new(file);
     let mut hasher = Sha3_384::new();
@@ -308,7 +329,8 @@ pub fn get_hash_sha384(xml_path: String) -> Result<Option<String>, std::io::Erro
     if let Some(base64_str) = BASE64.encode(&hash[..]).strip_suffix("=") {
         Ok(Some(format!(
             r#"{{"Key":{},"Value":{}\}}"#,
-            xml_path, base64_str
+            xml_path.to_string_lossy(),
+            base64_str
         )))
     } else {
         Ok(None)
@@ -364,7 +386,11 @@ pub fn du_or_dcu() -> Option<Software> {
 }
 
 pub async fn process() {
-    match get_catalog_and_ic_paths() {
+    let current_dir = env::current_dir().unwrap_or_else(|e| {
+        eprintln!("Failed to get current directory: {}", e);
+        PathBuf::from(".")
+    });
+    match get_catalog_and_ic_paths(current_dir) {
         Ok(catalog_info) => {
             let xml_path = cab_to_xml(&catalog_info.cab_path);
             if let Ok(xml_path) = xml_path {
@@ -399,7 +425,15 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let cab_path = get_catalog_and_ic_paths().unwrap().cab_path.clone();
+        let cab_path =
+            get_catalog_and_ic_paths(PathBuf::from(r"C:\Users\ll\Desktop\test\catalog-rs"))
+                .unwrap()
+                .cab_path
+                .clone();
+        println!("{}", cab_path);
         let xml = cab_to_xml(&cab_path);
+        println!("{:?}", xml.as_ref().unwrap());
+        let new_xml_path = handle_xml(xml.unwrap());
+        println!("{}", new_xml_path.unwrap().to_str().unwrap())
     }
 }

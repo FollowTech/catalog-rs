@@ -174,7 +174,7 @@ impl Catalog {
                         button(text("Start Update")).on_press(Message::StartUpdate),
                     ]
                     .align_x(Horizontal::Center)
-                    .spacing(50)
+                    .spacing(30)
                     .max_width(800),
                 )
                 .padding(20)

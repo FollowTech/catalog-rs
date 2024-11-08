@@ -15,5 +15,5 @@ iced = { workspace = true }
 walkdir = "2"
 sha3 = "0.10.8"
 data-encoding = "2.6.0"
-xml = "0.8.16"
+xml = "0.8.20"
 thiserror = "2.0.0"
