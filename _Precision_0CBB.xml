@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="utf-16"?><Manifest xmlns="openmanage/cm/dm" baseLocation="" dateTime="2024-09-18T01:31:19-05:00" identifier="be5d07e0-f9b5-49bb-956d-6c21d3c1c8de" releaseID="D0T8G" version="2024.09.18">
+  <SoftwareComponent schemaVersion="3.0" releaseID="WR6M5" releaseDate="July 08, 2024" vendorVersion="2413.5.68.0" dellVersion="A11" packageType="LW64" path="Intel-Management-Engine-Components-Installer_WR6M5_WIN64_2413.5.68.0_A11_01.EXE" packageID="WR6M5" dateTime="2024-04-07T08:05:13-05:00" size="174361800" identifier="bc06bc9b-fc45-4ba3-a004-d6009a754c89" baseBuildNumber="0">
+    <Name>
+      <Display lang="en"><![CDATA[Intel Management Engine Components Installer]]></Display>
+    </Name>
+    <ComponentType value="DRVR">
+      <Display lang="en"><![CDATA[Driver]]></Display>
+    </ComponentType>
+    <Description>
+      <Display lang="en"><![CDATA[This package contains the driver for the Intel Management Engine Components Installer. This driver installs Intel Active Management Technology - Serial Over LAN driver, Intel Dynamic Application Loader Host Interface, Intel Management and Security Application Local Management Service, Intel Management Engine Interface, Intel Management Engine Windows Management Instrumentation (WMI) provider, Intel Platform License Manager Service, Intel Serial Over LAN (SOL) Local Manageability Service (LMS) extension, Intel Wireless Manageability, Intel Wireless Manageability Driver extension, and Intel Management and Security Status application.]]></Display>
+    </Description>
+    <Category value="CS">
+      <Display lang="en"><![CDATA[Chipset]]></Display>
+    </Category>
+    <SupportedDCHDevices>
+      <Device componentID="100950" guid="0b0249a1-0016-4fad-8bbd-fa1abb30f4c4" infType="extension" componentType="DRVR" id="{72522ea3-94a8-4184-92c8-88769998a634}" version="2316.5.0.0" />
+      <Device componentID="100950" guid="62da37d2-afc8-4083-a8f4-73e32efcd262" infType="base" componentType="DRVR" version="2316.5.0.0">
+        <PCIInfo deviceID="A1BD" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A2BD" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="1BE3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="E373" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="9DE3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7F6B" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="51E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="02E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="54E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A873" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="43E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="E473" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A3BD" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="06E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A0E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="34E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A363" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A13D" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A23D" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7AEB" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7A6B" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="3DE3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7E73" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="9D3D" vendorID="8086" subDeviceID="" subVendorID="" />
+      </Device>
+      <Device componentID="100950" guid="7ef729b8-415e-4488-bb49-59e2d222e0db" infType="component" componentType="DRVR" version="1.44.2023.0710">
+        <Generic>SWC\3C4852D6-D47B-4F46-B05E-B5EDC1AA440E</Generic>
+      </Device>
+      <Device componentID="100950" guid="9e0b7b03-c4f3-4f89-b78b-a26a6925b2a1" infType="component" componentType="DRVR" version="1.72.189.0">
+        <Generic>SWC\PROVIDER_INTEL_COMPONENT_ICLSCLIENT</Generic>
+        <Generic>SWC\PROVIDER_INTEL_COMPONENT_ICLSCLIENT_ES_ONLY</Generic>
+      </Device>
+      <Device componentID="100950" guid="ca681f6e-9b5c-49f4-8fc3-ce66b031b3bb" infType="extension" componentType="DRVR" id="{BABE2782-EB1B-46A7-871A-F043D3200542}" version="2412.80.252.0" />
+      <Device componentID="100950" guid="cc028219-4d38-464a-a642-150608db00cb" infType="component" componentType="DRVR" version="2316.5.1.12">
+        <Generic>SWC\5DCEB103-DD64-403C-A17C-94FC5F917A9C</Generic>
+      </Device>
+      <Device componentID="100950" guid="d76b6247-520d-431e-80d7-1f7b0de7d604" infType="component" componentType="DRVR" version="2412.80.252.0">
+        <Generic>SWC\2CD1F6E8-34D3-478C-963E-D2E483BA4DFA</Generic>
+        <Generic>SWC\842ADBFC-7499-407B-BD91-A52842585D0B</Generic>
+        <Generic>SWC\9349315B-8A5C-4404-8F85-1B20DD1FF186</Generic>
+        <Generic>SWC\B74B5286-A7A5-444D-973B-71A66AF711BE</Generic>
+        <Generic>SWC\CF38EC04-E209-44E4-8335-7851A90DFDDA</Generic>
+        <Generic>SWC\D1D545FE-A4C1-45BD-8C7C-2B90A7C3734A</Generic>
+        <Generic>SWC\E4B9BAF3-7014-4E93-BE10-2922B68D1F40</Generic>
+      </Device>
+      <Device componentID="100950" guid="e2a01fba-e9cb-4b41-af84-696d4caea995" infType="component" componentType="DRVR" version="2408.5.4.0">
+        <Generic>SWC\06657A6D-FE0F-4C90-8DDA-A1501C74CE4B</Generic>
+      </Device>
+      <Device componentID="100950" guid="eca4f577-2920-48f6-90b6-b8e8511ca522" infType="base" componentType="DRVR" version="2406.5.5.0">
+        <PCIInfo deviceID="A360" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="43E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7A68" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="51E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="98E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="E470" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="54E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="38E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="E370" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A13A" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7E70" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="06E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="4DE0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="9DE0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A0E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="34E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="9CBA" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A2BA" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7AE8" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A870" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A3BA" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="1BE0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="3DE0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="02E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="4B70" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A23A" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="18D3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="9D3A" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7F68" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A1BA" vendorID="8086" subDeviceID="" subVendorID="" />
+      </Device>
+      <Device componentID="100950" guid="26375a9a-bdb8-488b-bf33-4b2f9ad5d95e" infType="component" componentType="DRVR" version="1.72.189.0">
+        <Generic>SWC\PROVIDER_INTEL_COMPONENT_ICLSCLIENT</Generic>
+        <Generic>SWC\PROVIDER_INTEL_COMPONENT_ICLSCLIENT_ES_ONLY</Generic>
+      </Device>
+      <Device componentID="100950" guid="2ee77b87-b9a6-4d4f-be35-b14594013766" infType="base" componentType="DRVR" version="2406.5.5.0">
+        <PCIInfo deviceID="A360" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="43E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7A68" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="51E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="98E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="E470" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="54E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="38E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="E370" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A13A" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7E70" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="06E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="4DE0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="9DE0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A0E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="34E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="9CBA" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A2BA" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7AE8" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A870" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A3BA" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="1BE0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="3DE0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="02E0" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="4B70" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A23A" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="18D3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="9D3A" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7F68" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A1BA" vendorID="8086" subDeviceID="" subVendorID="" />
+      </Device>
+      <Device componentID="100950" guid="44062e76-03c0-4b2b-8662-c44d1b7f7730" infType="component" componentType="DRVR" version="1.44.2023.0710">
+        <Generic>SWC\3C4852D6-D47B-4F46-B05E-B5EDC1AA440E</Generic>
+      </Device>
+      <Device componentID="100950" guid="6adcfbc9-0557-4b9d-a904-b9a0758d0769" infType="extension" componentType="DRVR" id="{BABE2782-EB1B-46A7-871A-F043D3200542}" version="2412.80.252.0" />
+      <Device componentID="100950" guid="7b5a901b-f878-4b54-a503-dd2d6708cdc6" infType="app" componentType="APAC" id="appup.intelmanagementandsecuritystatus_8j3eq9eme6ctt" version="2350.5.3.0" />
+      <Device componentID="100950" guid="7f9e898d-f0be-4904-aa29-de373c2ebec6" infType="component" componentType="DRVR" version="2412.80.252.0">
+        <Generic>SWC\2CD1F6E8-34D3-478C-963E-D2E483BA4DFA</Generic>
+        <Generic>SWC\842ADBFC-7499-407B-BD91-A52842585D0B</Generic>
+        <Generic>SWC\9349315B-8A5C-4404-8F85-1B20DD1FF186</Generic>
+        <Generic>SWC\B74B5286-A7A5-444D-973B-71A66AF711BE</Generic>
+        <Generic>SWC\CF38EC04-E209-44E4-8335-7851A90DFDDA</Generic>
+        <Generic>SWC\D1D545FE-A4C1-45BD-8C7C-2B90A7C3734A</Generic>
+        <Generic>SWC\E4B9BAF3-7014-4E93-BE10-2922B68D1F40</Generic>
+      </Device>
+      <Device componentID="100950" guid="93cd9cd0-7866-4b4e-861e-34f2dfc3d31f" infType="component" componentType="DRVR" version="2408.5.4.0">
+        <Generic>SWC\06657A6D-FE0F-4C90-8DDA-A1501C74CE4B</Generic>
+      </Device>
+      <Device componentID="100950" guid="a142927c-431d-48f9-a0c9-aa1b929d46bc" infType="component" componentType="DRVR" version="2316.5.1.12">
+        <Generic>SWC\5DCEB103-DD64-403C-A17C-94FC5F917A9C</Generic>
+      </Device>
+      <Device componentID="100950" guid="ab16ab2a-cbb4-4127-af62-54d73c9a1dd1" infType="extension" componentType="DRVR" id="{72522ea3-94a8-4184-92c8-88769998a634}" version="2316.5.0.0" />
+      <Device componentID="100950" guid="c92ad5bb-9398-43b0-8847-2d4d1583be1a" infType="base" componentType="DRVR" version="2316.5.0.0">
+        <PCIInfo deviceID="A1BD" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A2BD" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="1BE3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="E373" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="9DE3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7F6B" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="51E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="02E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="54E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A873" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="43E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="E473" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A3BD" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="06E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A0E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="34E3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A363" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A13D" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="A23D" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7AEB" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7A6B" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="3DE3" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="7E73" vendorID="8086" subDeviceID="" subVendorID="" />
+        <PCIInfo deviceID="9D3D" vendorID="8086" subDeviceID="" subVendorID="" />
+      </Device>
+    </SupportedDCHDevices>
+    <SupportedSystems>
+      <Brand key="38" prefix="PRE">
+        <Display lang="en"><![CDATA[Precision]]></Display>
+        <Model systemID="0CBB">
+          <Display lang="en"><![CDATA[Precision 3591]]></Display>
+        </Model>
+      </Brand>
+    </SupportedSystems>
+    <SupportedOperatingSystems>
+      <OperatingSystem osCode="EXCAL" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 10 64-bit- Excalibur]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="EXCBC" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 10 64-bit- Excalibur]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="EXNOS" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 10 64-bit- Excalibur]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="IOT01" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 10 64-Bit]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="IOTL3" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 10 64-Bit]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="IOTL4" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 10 64-bit LTSC2021]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="PE1064" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 10 64-Bit]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="W10H4" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 10 64-Bit]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="W10P4" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 10 64-Bit]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="W10TM" osVendor="Microsoft" osArch="x64" majorVersion="0" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows Teams Rooms]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="W11S5" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 11 SE]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="W21H4" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 11]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="W21P4" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 11]]></Display>
+      </OperatingSystem>
+      <OperatingSystem osCode="WEL16" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0">
+        <Display lang="en"><![CDATA[Windows 10 64-Bit]]></Display>
+      </OperatingSystem>
+    </SupportedOperatingSystems>
+    <ImportantInfo URL="https://www.dell.com/support/home/us/en/19/Drivers/DriversDetails?driverId=WR6M5">
+      <Display lang="en"><![CDATA[NA]]></Display>
+    </ImportantInfo>
+    <Criticality value="1">
+      <Display lang="en"><![CDATA[Recommended]]></Display>
+    </Criticality>
+    <Cryptography>
+      <Hash algorithm="MD5">d6081374c6ed69839a984d5991c2609d</Hash>
+      <Hash algorithm="SHA256">c4a1ee29aefd96b2d2f4245b4d58fbe0daa7901c73b693722a0b919905df5d8e</Hash>
+      <Hash algorithm="SHA1">12783f6f66eac147ed09b1bd8c3568d8a6c49ab7</Hash>
+    </Cryptography>
+    <AppliesTo>
+      <DeviceInformation>Intel(R) Active Management Technology - SOL</DeviceInformation>
+      <DeviceInformation>Intel(R) Dynamic Application Loader Host Interface</DeviceInformation>
+      <DeviceInformation>Intel(R) iCLS Client</DeviceInformation>
+      <DeviceInformation>Intel(R) Management and Security Application Local Management</DeviceInformation>
+      <DeviceInformation>Intel(R) Management Engine Interface</DeviceInformation>
+      <DeviceInformation>Intel(R) ME WMI Provider</DeviceInformation>
+      <DeviceInformation>Intel(R) SOL LMS Extension</DeviceInformation>
+      <DeviceInformation>Intel(R) Wireless Manageability</DeviceInformation>
+      <DeviceInformation>Intel(R) Wireless Manageability Driver extension</DeviceInformation>
+    </AppliesTo>
+    <DeviceGroup>
+      <OperatingSystem osCode="Windows10.0" osVendor="Microsoft" osArch="x64" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0" buildNumber="0">
+        <Display lang="en"><![CDATA[Windows 10 x64-Bit]]></Display>
+      </OperatingSystem>
+      <Device>0b0249a1-0016-4fad-8bbd-fa1abb30f4c4</Device>
+      <Device>62da37d2-afc8-4083-a8f4-73e32efcd262</Device>
+      <Device>7ef729b8-415e-4488-bb49-59e2d222e0db</Device>
+      <Device>9e0b7b03-c4f3-4f89-b78b-a26a6925b2a1</Device>
+      <Device>ca681f6e-9b5c-49f4-8fc3-ce66b031b3bb</Device>
+      <Device>cc028219-4d38-464a-a642-150608db00cb</Device>
+      <Device>d76b6247-520d-431e-80d7-1f7b0de7d604</Device>
+      <Device>e2a01fba-e9cb-4b41-af84-696d4caea995</Device>
+      <Device>eca4f577-2920-48f6-90b6-b8e8511ca522</Device>
+      <Device>26375a9a-bdb8-488b-bf33-4b2f9ad5d95e</Device>
+      <Device>2ee77b87-b9a6-4d4f-be35-b14594013766</Device>
+      <Device>44062e76-03c0-4b2b-8662-c44d1b7f7730</Device>
+      <Device>6adcfbc9-0557-4b9d-a904-b9a0758d0769</Device>
+      <Device>7b5a901b-f878-4b54-a503-dd2d6708cdc6</Device>
+      <Device>7f9e898d-f0be-4904-aa29-de373c2ebec6</Device>
+      <Device>93cd9cd0-7866-4b4e-861e-34f2dfc3d31f</Device>
+      <Device>a142927c-431d-48f9-a0c9-aa1b929d46bc</Device>
+      <Device>ab16ab2a-cbb4-4127-af62-54d73c9a1dd1</Device>
+      <Device>c92ad5bb-9398-43b0-8847-2d4d1583be1a</Device>
+    </DeviceGroup>
+    <DeviceGroup>
+      <OperatingSystem osCode="Windows10.0" osVendor="Microsoft" osArch="x86" majorVersion="10" minorVersion="0" spMajorVersion="0" spMinorVersion="0" buildNumber="0">
+        <Display lang="en"><![CDATA[Windows 10 x86-Bit]]></Display>
+      </OperatingSystem>
+      <Device>0b0249a1-0016-4fad-8bbd-fa1abb30f4c4</Device>
+      <Device>62da37d2-afc8-4083-a8f4-73e32efcd262</Device>
+      <Device>7ef729b8-415e-4488-bb49-59e2d222e0db</Device>
+      <Device>9e0b7b03-c4f3-4f89-b78b-a26a6925b2a1</Device>
+      <Device>ca681f6e-9b5c-49f4-8fc3-ce66b031b3bb</Device>
+      <Device>cc028219-4d38-464a-a642-150608db00cb</Device>
+      <Device>d76b6247-520d-431e-80d7-1f7b0de7d604</Device>
+      <Device>e2a01fba-e9cb-4b41-af84-696d4caea995</Device>
+      <Device>eca4f577-2920-48f6-90b6-b8e8511ca522</Device>
+      <Device>26375a9a-bdb8-488b-bf33-4b2f9ad5d95e</Device>
+      <Device>2ee77b87-b9a6-4d4f-be35-b14594013766</Device>
+      <Device>44062e76-03c0-4b2b-8662-c44d1b7f7730</Device>
+      <Device>6adcfbc9-0557-4b9d-a904-b9a0758d0769</Device>
+      <Device>7b5a901b-f878-4b54-a503-dd2d6708cdc6</Device>
+      <Device>7f9e898d-f0be-4904-aa29-de373c2ebec6</Device>
+      <Device>93cd9cd0-7866-4b4e-861e-34f2dfc3d31f</Device>
+      <Device>a142927c-431d-48f9-a0c9-aa1b929d46bc</Device>
+      <Device>ab16ab2a-cbb4-4127-af62-54d73c9a1dd1</Device>
+      <Device>c92ad5bb-9398-43b0-8847-2d4d1583be1a</Device>
+    </DeviceGroup>
+  </SoftwareComponent>
+  <SoftwareComponent schemaVersion="3.0" releaseID="MG49X" releaseDate="August 26, 2024" vendorVersion="1.8.0" dellVersion="1.8.0" packageType="LWXP" path="Precision_3590_3591_Latitude_5550_1.8.0.exe" packageID="MG49X" dateTime="2024-08-12T22:18:20-05:00" size="56833344" identifier="ccdbb913-75da-4cfa-b2c1-94e60f884eb8">
+    <Name>
+      <Display lang="en"><![CDATA[Dell Precision 3590/3591 and Latitude 5550 System BIOS]]></Display>
+    </Name>
+    <ComponentType value="BIOS">
+      <Display lang="en"><![CDATA[BIOS]]></Display>
+    </ComponentType>
+    <Description>
+      <Display lang="en"><![CDATA[This package contains the Dell system BIOS update. BIOS is a firmware package that is embedded on a small memory chip on the system board. It controls the keyboard, monitor, disk drives, and other devices. This update addresses the Dell Security Advisories (DSA). A security advisory is a statement when a security vulnerability impacts a product, and a remedy is available for the vulnerability.]]></Display>
+    </Description>
+    <Category value="BI">
+      <Display lang="en"><![CDATA[BIOS]]></Display>
+    </Category>
+    <SupportedDevices>
+      <Device componentID="159" embedded="false">
+        <Display><![CDATA[Latitude 5550 / Precision 3590]]></Display>
+      </Device>
+    </SupportedDevices>
+    <SupportedSystems>
+      <Brand key="38" prefix="PRE">
+        <Display lang="en"><![CDATA[Precision]]></Display>
+        <Model systemID="0CBB">
+          <Display lang="en"><![CDATA[Precision 3591]]></Display>
+        </Model>
+      </Brand>
+    </SupportedSystems>
+    <ImportantInfo URL="https://www.dell.com/support/home/us/en/19/Drivers/DriversDetails?driverId=MG49X">
+      <Display lang="en"><![CDATA[NA]]></Display>
+    </ImportantInfo>
+    <Criticality value="1">
+      <Display lang="en"><![CDATA[Recommended]]></Display>
+    </Criticality>
+    <Cryptography>
+      <Hash algorithm="MD5">b0936e9a22a9296f8c964d2eda82d106</Hash>
+      <Hash algorithm="SHA256">aaddb417116c1b80844fd471c96e910ca176339dcbaddb46118209b63fa05c2b</Hash>
+      <Hash algorithm="SHA1">549bb48c71cdd0c85e84ddbd04aed70a99ed491a</Hash>
+    </Cryptography>
+  </SoftwareComponent>
+  <Prerequisites />
+</Manifest>

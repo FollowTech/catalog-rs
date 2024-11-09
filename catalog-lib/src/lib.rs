@@ -1,10 +1,13 @@
 pub mod error;
+// pub mod test_xml;
 use std::{
     borrow::Cow,
     env::{self},
-    fs::{copy, File, OpenOptions},
+    ffi::OsStr,
+    fs::{copy, File},
     io::{self, BufReader, BufWriter},
-    os::windows::process::CommandExt,
+    iter::once,
+    os::windows::ffi::OsStrExt,
     path::PathBuf,
     process::Command,
     ptr::null_mut,
@@ -72,6 +75,7 @@ pub fn open_file_dialog() -> windows::core::Result<String> {
     }
 }
 
+#[derive(Debug, Default, Clone)]
 pub struct CatalogInfo {
     pub cab_path: String,
     pub ic_path: String,
@@ -135,16 +139,20 @@ pub fn cab_to_xml(cab_path: &str) -> Result<PathBuf, CatalogError> {
 }
 
 fn handle_xml(xml_path: PathBuf) -> Result<PathBuf, CatalogError> {
+    // println!("handle_xml--{:?}", xml_path);
     let input_file = File::open(&xml_path)?;
     let input_reader = BufReader::new(input_file);
     let reader = EventReader::new(input_reader);
-    // 打开输出文件以写入
-    let output_file = OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .open(&xml_path)?;
-
-    let mut event_writer = EventWriter::new(BufWriter::new(output_file));
+    let mut output_xml_path = xml_path.parent().unwrap().to_path_buf();
+    let file_name = xml_path.file_name().unwrap();
+    output_xml_path.push(Into::<PathBuf>::into(format!(
+        "_{}",
+        file_name.to_string_lossy()
+    )));
+    // println!("output_xml_path--{:?}", output_xml_path);
+    let output_file = File::create(&output_xml_path)?;
+    let output_writer = BufWriter::new(output_file);
+    let mut event_writer = EventWriter::new(BufWriter::new(output_writer));
 
     let mut in_software = false;
     let mut in_maniface = false;
@@ -154,101 +162,100 @@ fn handle_xml(xml_path: PathBuf) -> Result<PathBuf, CatalogError> {
     for event in reader {
         match event {
             Ok(event) => {
-                match event {
-                    xml::reader::XmlEvent::StartDocument {
-                        version,
-                        encoding,
-                        standalone,
-                    } => {
-                        println!("{:spaces$}+{version}", "", spaces = depth * 2);
-                        depth += 1;
+                if let Some(w_event) = event.as_writer_event() {
+                    match w_event {
+                        XmlEvent::StartElement {
+                            name,
+                            ref attributes,
+                            ref namespace,
+                        } => {
+                            let mut new_attributes = Vec::new();
+                            // println!("StartElement-{}", name.local_name);
+                            if name.local_name == "Manifest" {
+                                // in_maniface = true;
+                                new_attributes.clear();
+                                for attr in attributes.iter() {
+                                    if attr.name.local_name == "baseLocation" {
+                                        new_attributes.push(Attribute::new(attr.name, ""));
+                                    } else {
+                                        new_attributes.push(*attr);
+                                    }
+                                }
+                                match event_writer.write(XmlEvent::StartElement {
+                                    name,
+                                    attributes: Cow::Owned(new_attributes),
+                                    namespace: namespace.clone(),
+                                }) {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        eprintln!("Error: StartElement-Manifest--{}", e)
+                                    }
+                                };
+                            } else if name.local_name == "SoftwareComponent" {
+                                // in_software = true;
+                                // 修改 path 属性
+                                new_attributes.clear();
+                                for attr in attributes.iter() {
+                                    if attr.name.local_name == "path" {
+                                        let new_value =
+                                            attr.value.split("/").nth(2).unwrap_or_default();
+                                        println!("SoftwareComponent-new_value--{}", new_value);
+                                        new_attributes.push(Attribute::new(attr.name, new_value));
+                                    } else {
+                                        new_attributes.push(*attr);
+                                    }
+                                }
+                                match event_writer.write(XmlEvent::StartElement {
+                                    name,
+                                    attributes: Cow::Owned(new_attributes),
+                                    namespace: namespace.clone(),
+                                }) {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        eprintln!("Error: StartElement-SoftwareComponent--{}", e)
+                                    }
+                                };
+                            } else {
+                                match event_writer.write(w_event) {
+                                    Ok(_) => {}
+                                    Err(e) => eprintln!("Error: StartElement-else--{}", e),
+                                };
+                            }
+                        }
+                        XmlEvent::EndElement { name } => {
+                            match event_writer.write(w_event.clone()) {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    eprintln!("Error: EndElement-else-event{:?}-{}", w_event, e)
+                                }
+                            };
+                            if let Some(name) = name {
+                                // if in_software && name.local_name == "SoftwareComponent" {
+                                //     in_software = false;
+                                // } else if in_maniface && name.local_name == "Manifest" {
+                                //     in_maniface = false;
+                                // }
+                                // match event_writer.write(w_event.clone()) {
+                                //     Ok(_) => {}
+                                //     Err(e) => {
+                                //         eprintln!("Error: EndElement-else-event{:?}-{}", w_event, e)
+                                //     }
+                                // };
+                            }
+                        }
+                        _ => {
+                            match event_writer.write(w_event) {
+                                Ok(_) => {}
+                                Err(e) => panic!("Write error: {e}"),
+                            };
+                        }
                     }
-                    xml::reader::XmlEvent::EndDocument => todo!(),
-                    xml::reader::XmlEvent::ProcessingInstruction { name, data } => todo!(),
-                    xml::reader::XmlEvent::StartElement {
-                        name,
-                        attributes,
-                        namespace,
-                    } => todo!(),
-                    xml::reader::XmlEvent::EndElement { name } => todo!(),
-                    xml::reader::XmlEvent::CData(_) => todo!(),
-                    xml::reader::XmlEvent::Comment(_) => todo!(),
-                    xml::reader::XmlEvent::Characters(_) => todo!(),
-                    xml::reader::XmlEvent::Whitespace(_) => todo!(),
                 }
-
-                //         if let Some(w_event) = event.as_writer_event() {
-                // match w_event {
-                //     XmlEvent::StartElement {
-                //         name,
-                //         ref attributes,
-                //         ref namespace,
-                //     } => {
-                //         let mut new_attributes = Vec::new();
-                //         if name.local_name == "SoftwareComponent" {
-                //             in_software = true;
-                //             // 修改 path 属性
-                //             new_attributes.clear();
-                //             for attr in attributes.iter() {
-                //                 if attr.name.local_name == "path" {
-                //                     let new_value =
-                //                         attr.value.split("\\").nth(1).unwrap_or_default();
-                //                     new_attributes.push(Attribute::new(attr.name, new_value));
-                //                 } else {
-                //                     new_attributes.push(*attr);
-                //                 }
-                //             }
-                //             match event_writer.write(XmlEvent::StartElement {
-                //                 name,
-                //                 attributes: Cow::Owned(new_attributes),
-                //                 namespace: namespace.clone(),
-                //             }) {
-                //                 Ok(_) => {}
-                //                 Err(e) => eprintln!("Error: {}", e),
-                //             };
-                //         } else if name.local_name == "Manufacturer" {
-                //             in_maniface = true;
-                //             new_attributes.clear();
-                //             for attr in attributes.iter() {
-                //                 if attr.name.local_name == "baseLocation" {
-                //                     new_attributes.push(Attribute::new(attr.name, ""));
-                //                 } else {
-                //                     new_attributes.push(*attr);
-                //                 }
-                //             }
-                //         } else {
-                //             match event_writer.write(w_event) {
-                //                 Ok(_) => {}
-                //                 Err(e) => eprintln!("Error: {}", e),
-                //             };
-                //         }
-                //     }
-                //     XmlEvent::EndElement { name, .. } => {
-                //         if let Some(name) = name {
-                //             if in_software && name.local_name == "path" {
-                //                 in_software = false;
-                //             } else if in_maniface && name.local_name == "Manufacturer" {
-                //                 in_maniface = false;
-                //             }
-                //             match event_writer.write(w_event) {
-                //                 Ok(_) => {}
-                //                 Err(e) => eprintln!("Error: {}", e),
-                //             };
-                //         }
-                //     }
-                //     _ => {
-                //         match event_writer.write(w_event) {
-                //             Ok(_) => {}
-                //             Err(e) => eprintln!("Error: {}", e),
-                //         };
-                //     }
-                // }
-                // }
             }
-            Err(e) => eprintln!("match event //{==={}", e),
+            Err(e) => eprintln!("match event: {}", e),
         }
     }
-    Ok(xml_path)
+    Ok(output_xml_path)
 }
 
 fn str_to_pcwstr(s: &str) -> PCWSTR {
@@ -279,30 +286,16 @@ pub fn open_reg_subkey(sub_key: &str) -> Result<HKEY, String> {
     }
 }
 
-pub trait ToOptionU8Slice {
-    fn to_option_u8(&self) -> Option<&[u8]>;
-}
-
-impl ToOptionU8Slice for &str {
-    fn to_option_u8(&self) -> Option<&[u8]> {
-        if self.is_empty() {
-            None
-        } else {
-            Some(self.as_bytes())
-        }
-    }
-}
-
-pub fn set_reg_vaule<T: ToOptionU8Slice>(
+pub fn set_reg_vaule(
     sub_key: HKEY,
     value_name: &str,
     dw_type: REG_VALUE_TYPE,
-    vaule: T,
+    vaule: &str,
 ) -> bool {
     let _value_name = str_to_pcwstr(value_name);
-
-    unsafe { Registry::RegSetValueExW(sub_key, _value_name, 0, dw_type, vaule.to_option_u8()) }
-        .is_ok()
+    let os_str = OsStr::new(vaule).as_encoded_bytes();
+    println!("set_reg_vaule--{:?}", vaule);
+    unsafe { Registry::RegSetValueExW(sub_key, _value_name, 0, dw_type, Some(&os_str)) }.is_ok()
 }
 
 pub fn delete_reg_key_vaule(key: HKEY, sub_key: Option<&str>, value_names: Vec<&str>) {
@@ -320,21 +313,27 @@ pub fn delete_reg_key_vaule(key: HKEY, sub_key: Option<&str>, value_names: Vec<&
     }
 }
 
-pub fn get_hash_sha384(xml_path: PathBuf) -> Result<Option<String>, std::io::Error> {
+pub fn get_hash_sha384(xml_path: PathBuf) -> Result<String, std::io::Error> {
     let file = File::open(&xml_path)?;
     let mut reader = BufReader::new(file);
     let mut hasher = Sha3_384::new();
     let _ = io::copy(&mut reader, &mut hasher);
     let hash = hasher.finalize();
-    if let Some(base64_str) = BASE64.encode(&hash[..]).strip_suffix("=") {
-        Ok(Some(format!(
-            r#"{{"Key":{},"Value":{}\}}"#,
+    let base64 = BASE64.encode(&hash[..]);
+    let base64_str = match base64.strip_suffix("=") {
+        Some(temp) => format!(
+            r#"{{"CatalogHashValues":[{{"Key":"{}","Value":"{}"}}]}}"#,
             xml_path.to_string_lossy(),
-            base64_str
-        )))
-    } else {
-        Ok(None)
-    }
+            temp
+        ),
+        None => format!(
+            r#"{{"CatalogHashValues":[{{"Key":"{}","Value":"{}"}}]}}"#,
+            xml_path.to_string_lossy(),
+            base64
+        ),
+    };
+    println!("get_hash_sha384--{}", base64_str);
+    Ok(base64_str)
 }
 
 pub fn handle_reg(str_hash: &str, software: &Software) {
@@ -351,9 +350,21 @@ pub fn handle_reg(str_hash: &str, software: &Software) {
             delete_reg_key_vaule(service_key, Some("IgnoreList"), service_vaule.clone());
             delete_reg_key_vaule(service_key, None, service_vaule);
             open_software(name);
-            todo!()
         }
-        Software::DellCommandUpdate { .. } => todo!(),
+        Software::DellCommandUpdate { name } => {
+            let service_key = open_reg_subkey(r#"SOFTWARE\Dell\UpdateService\Service"#).unwrap();
+            println!("handle_reg--{}", str_hash);
+            set_reg_vaule(service_key, "CustomCatalogHashValues", REG_SZ, str_hash);
+            let service_vaule = vec![
+                "LastCheckTimestamp",
+                "LastUpdateTimestamp",
+                "CatalogTimestamp",
+                "CatalogTimestamp",
+            ];
+            delete_reg_key_vaule(service_key, Some("IgnoreList"), service_vaule.clone());
+            delete_reg_key_vaule(service_key, None, service_vaule);
+            open_software(name);
+        }
     }
 }
 
@@ -380,43 +391,49 @@ pub fn du_or_dcu() -> Option<Software> {
             Ok(_) => Some(Software::DellUpdate {
                 name: "Dell Update".to_string(),
             }),
-            Err(_) => None,
+            Err(e) => {
+                eprintln!("du_or_dcu--{}", e);
+                None
+            }
         },
     }
 }
 
-pub async fn process() {
-    let current_dir = env::current_dir().unwrap_or_else(|e| {
+pub fn get_cur_path() -> PathBuf {
+    env::current_dir().unwrap_or_else(|e| {
         eprintln!("Failed to get current directory: {}", e);
         PathBuf::from(".")
-    });
-    match get_catalog_and_ic_paths(current_dir) {
-        Ok(catalog_info) => {
-            let xml_path = cab_to_xml(&catalog_info.cab_path);
-            if let Ok(xml_path) = xml_path {
-                let op_str_hash = get_hash_sha384(xml_path).unwrap_or_default();
-                let hash = op_str_hash.unwrap_or_default();
-                let _ = copy(
-                    &catalog_info.ic_path,
-                    r"C:\Program Files (x86)\Dell\UpdateService\Service\InvColPC.exe",
-                );
-                if let Some(ref software) = du_or_dcu() {
-                    match software {
-                        Software::DellUpdate { name } => {
-                            println!("{}", name);
-                            handle_reg(&hash, software)
-                        }
-                        Software::DellCommandUpdate { name } => {
-                            println!("{}", name);
-                            handle_reg(&hash, software)
-                        }
-                    }
-                }
-            } else {
+    })
+}
+
+fn handle() -> Result<(), CatalogError> {
+    let catalog_info = get_catalog_and_ic_paths(get_cur_path())?;
+    let xml_path = cab_to_xml(&catalog_info.cab_path)?;
+    let new_xml_path = handle_xml(xml_path)?;
+    let hash = get_hash_sha384(new_xml_path)?;
+    let _ = copy(
+        &catalog_info.ic_path,
+        r"C:\Program Files (x86)\Dell\UpdateService\Service\InvColPC.exe",
+    );
+    if let Some(ref software) = du_or_dcu() {
+        match software {
+            Software::DellUpdate { name } => {
+                println!("{}", name);
+                handle_reg(&hash, software)
+            }
+            Software::DellCommandUpdate { name } => {
+                println!("{}", name);
+                handle_reg(&hash, software)
             }
         }
-        Err(_) => todo!(),
-    }
+    } else {
+        println!("请安装DCU或者DU");
+    };
+    Ok(())
+}
+
+pub async fn process() {
+    let _ = handle();
 }
 
 #[cfg(test)]
@@ -424,16 +441,5 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let cab_path =
-            get_catalog_and_ic_paths(PathBuf::from(r"C:\Users\ll\Desktop\test\catalog-rs"))
-                .unwrap()
-                .cab_path
-                .clone();
-        println!("{}", cab_path);
-        let xml = cab_to_xml(&cab_path);
-        println!("{:?}", xml.as_ref().unwrap());
-        let new_xml_path = handle_xml(xml.unwrap());
-        println!("{}", new_xml_path.unwrap().to_str().unwrap())
-    }
+    fn it_works() {}
 }

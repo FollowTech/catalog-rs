@@ -1,5 +1,5 @@
 // #![windows_subsystem = "windows"]
-use catalog_lib::error::CatalogError;
+use catalog_lib::{error::CatalogError, get_cur_path, CatalogInfo};
 use iced::{
     alignment::Horizontal,
     theme::Palette,
@@ -20,9 +20,8 @@ enum Catalog {
 struct State {
     size: (f32, f32),
     title: String,
-    catalog_path: String,
-    ic_path: String,        // dirty: bool,
-    get_path_error: String, // saving: bool,
+    catalog_info: CatalogInfo, // dirty: bool,
+    get_path_error: String,    // saving: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -45,13 +44,12 @@ enum Message {
 
 impl State {
     async fn load() -> State {
-        let paths = catalog_lib::get_catalog_and_ic_paths();
+        let paths = catalog_lib::get_catalog_and_ic_paths(get_cur_path());
         // let paths: Result<(String, String), CatalogError> = Ok(("s".into(), "ss".into()));
         let (width, height) = catalog_lib::get_desktop_window_size();
         match paths {
             Ok(catalog_info) => State {
-                catalog_path: catalog_info.cab_path,
-                ic_path: catalog_info.ic_path,
+                catalog_info: catalog_info,
                 title: "Welcome to the Home Page".into(),
                 size: (width as f32, height as f32),
                 ..Default::default()
@@ -96,8 +94,10 @@ impl Catalog {
                     //     Task::none()
                     // }
                     // Message::Loaded(state) => todo!(),
-                    Message::GoToSelectCatalog => handle_file_selection(&mut state.catalog_path),
-                    Message::GoToSeleceIc => handle_file_selection(&mut state.ic_path),
+                    Message::GoToSelectCatalog => {
+                        handle_file_selection(&mut state.catalog_info.cab_path)
+                    }
+                    Message::GoToSeleceIc => handle_file_selection(&mut state.catalog_info.ic_path),
                     Message::StartUpdate => {
                         Task::perform(catalog_lib::process(), Message::ButtonClicked)
                     }
@@ -122,8 +122,7 @@ impl Catalog {
             Catalog::Loading => loading_message(),
             Catalog::Loaded(State {
                 title,
-                catalog_path,
-                ic_path,
+                catalog_info,
                 get_path_error,
                 size,
             }) => {
@@ -151,17 +150,20 @@ impl Catalog {
                             .color([0.5, 0.5, 0.5])
                             .align_x(Center), // .on_submit(Message::CreateTask),
                         row!(
-                            text_input("请选择你的catalog cab文件?", catalog_path)
-                                // .on_input(Message1::InputCatalogPathChanged)
-                                .style(border_sytle)
-                                .align_x(Center),
+                            text_input(
+                                "请选择你的catalog cab文件?",
+                                catalog_info.cab_path.as_str()
+                            )
+                            // .on_input(Message1::InputCatalogPathChanged)
+                            .style(border_sytle)
+                            .align_x(Center),
                             button(text("Catalog").align_x(Horizontal::Center))
                                 .width(100)
                                 .on_press(Message::GoToSelectCatalog),
                         )
                         .spacing(20),
                         row!(
-                            text_input("请选择你的ic文件?", ic_path)
+                            text_input("请选择你的ic文件?", catalog_info.ic_path.as_str())
                                 // .on_input(Message::InputIcPathChanged)
                                 // .on_submit(Message::CreateTask)
                                 .style(border_sytle)
