@@ -3,11 +3,8 @@ pub mod error;
 use std::{
     borrow::Cow,
     env::{self},
-    ffi::OsStr,
     fs::{copy, File},
     io::{self, BufReader, BufWriter},
-    iter::once,
-    os::windows::ffi::OsStrExt,
     path::PathBuf,
     process::Command,
     ptr::null_mut,
@@ -27,7 +24,6 @@ use windows::{
                 COINIT_APARTMENTTHREADED,
             },
             Registry::{self, HKEY, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, REG_SZ, REG_VALUE_TYPE},
-            Threading::CREATE_NO_WINDOW,
         },
         UI::{
             Shell::{FileOpenDialog, IFileOpenDialog, SIGDN_FILESYSPATH},
@@ -103,6 +99,7 @@ pub fn get_catalog_and_ic_paths(current_dir: PathBuf) -> Result<CatalogInfo, Cat
             exe_files.push(f_name);
         }
     }
+    println!("get_catalog_and_ic_paths--{:?}-{:?}", cab_files, exe_files);
     match (cab_files.as_slice(), exe_files.as_slice()) {
         ([cab_file], [exe_file]) => Ok(CatalogInfo::new(cab_file.clone(), exe_file.clone())),
         ([cab_file], []) => Ok(CatalogInfo::new(
@@ -153,11 +150,6 @@ fn handle_xml(xml_path: PathBuf) -> Result<PathBuf, CatalogError> {
     let output_file = File::create(&output_xml_path)?;
     let output_writer = BufWriter::new(output_file);
     let mut event_writer = EventWriter::new(BufWriter::new(output_writer));
-
-    let mut in_software = false;
-    let mut in_maniface = false;
-
-    let mut depth = 0;
 
     for event in reader {
         match event {
@@ -222,26 +214,13 @@ fn handle_xml(xml_path: PathBuf) -> Result<PathBuf, CatalogError> {
                                 };
                             }
                         }
-                        XmlEvent::EndElement { name } => {
-                            match event_writer.write(w_event.clone()) {
+                        XmlEvent::EndElement { name: _ } => {
+                            match event_writer.write(w_event) {
                                 Ok(_) => {}
                                 Err(e) => {
-                                    eprintln!("Error: EndElement-else-event{:?}-{}", w_event, e)
+                                    eprintln!("Error: EndElement-else-event{}", e)
                                 }
                             };
-                            if let Some(name) = name {
-                                // if in_software && name.local_name == "SoftwareComponent" {
-                                //     in_software = false;
-                                // } else if in_maniface && name.local_name == "Manifest" {
-                                //     in_maniface = false;
-                                // }
-                                // match event_writer.write(w_event.clone()) {
-                                //     Ok(_) => {}
-                                //     Err(e) => {
-                                //         eprintln!("Error: EndElement-else-event{:?}-{}", w_event, e)
-                                //     }
-                                // };
-                            }
                         }
                         _ => {
                             match event_writer.write(w_event) {
@@ -290,12 +269,25 @@ pub fn set_reg_vaule(
     sub_key: HKEY,
     value_name: &str,
     dw_type: REG_VALUE_TYPE,
-    vaule: &str,
+    value: &str,
 ) -> bool {
     let _value_name = str_to_pcwstr(value_name);
-    let os_str = OsStr::new(vaule).as_encoded_bytes();
-    println!("set_reg_vaule--{:?}", vaule);
-    unsafe { Registry::RegSetValueExW(sub_key, _value_name, 0, dw_type, Some(&os_str)) }.is_ok()
+    let value = value
+        .encode_utf16()
+        .into_iter()
+        .flat_map(|x| x.to_le_bytes())
+        .collect::<Vec<u8>>();
+    println!("set_reg_vaule--{:?}", value);
+    let res = unsafe { Registry::RegSetValueExW(sub_key, _value_name, 0, dw_type, Some(&value)) };
+    if res.is_ok() {
+        unsafe {
+            let _ = Registry::RegCloseKey(sub_key);
+        };
+        true
+    } else {
+        eprintln!("set_reg_vaule--error");
+        false
+    }
 }
 
 pub fn delete_reg_key_vaule(key: HKEY, sub_key: Option<&str>, value_names: Vec<&str>) {
@@ -434,12 +426,4 @@ fn handle() -> Result<(), CatalogError> {
 
 pub async fn process() {
     let _ = handle();
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {}
 }

@@ -1,5 +1,5 @@
 // #![windows_subsystem = "windows"]
-use catalog_lib::{error::CatalogError, get_cur_path, CatalogInfo};
+use catalog_lib::{get_cur_path, CatalogInfo};
 use iced::{
     alignment::Horizontal,
     theme::Palette,
@@ -21,19 +21,15 @@ struct State {
     size: (f32, f32),
     title: String,
     catalog_info: CatalogInfo, // dirty: bool,
-    get_path_error: String,    // saving: bool,
+    error: String,             // saving: bool,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     Loaded(State),
-    // Saved(Result<(), SaveError>),
-    InputCatalogPathChanged(String),
-    InputIcPathChanged(String),
     GoToSelectCatalog,
     GoToSeleceIc,
     StartUpdate,
-    GoToHomePage,
     ButtonClicked(()),
     // CreateTask,
     // FilterChanged(Filter),
@@ -57,7 +53,7 @@ impl State {
             Err(e) => {
                 println!("Error: {}", e);
                 State {
-                    get_path_error: e.to_string(),
+                    error: e.to_string(),
                     ..Default::default()
                 }
             }
@@ -123,7 +119,7 @@ impl Catalog {
             Catalog::Loaded(State {
                 title,
                 catalog_info,
-                get_path_error,
+                error,
                 size,
             }) => {
                 let border_sytle = |theme: &Theme, status: text_input::Status| {
@@ -174,6 +170,7 @@ impl Catalog {
                         )
                         .spacing(20),
                         button(text("Start Update")).on_press(Message::StartUpdate),
+                        text(error).color([1.0, 0.0, 0.0])
                     ]
                     .align_x(Horizontal::Center)
                     .spacing(30)
