@@ -12,10 +12,11 @@ use std::{
 
 use data_encoding::BASE64;
 use error::CatalogError;
+use iced::Size;
 use sha3::{Digest, Sha3_384};
 use walkdir::WalkDir;
 use windows::{
-    core::PCWSTR,
+    core::{Error, PCWSTR},
     Win32::{
         Foundation::RECT,
         System::{
@@ -33,8 +34,14 @@ use windows::{
 };
 use xml::{attribute::Attribute, reader::EventReader, writer::XmlEvent, EventWriter};
 
+#[derive(Debug, Default, Clone)]
+pub struct WindowSize {
+    pub width: f32,
+    pub height: f32,
+}
+
 /// 获取桌面窗口的大小
-pub fn get_desktop_window_size() -> (i32, i32) {
+pub fn get_window_size() -> Size {
     // 获取桌面窗口句柄
     let desktop_window = unsafe { GetDesktopWindow() };
 
@@ -50,14 +57,32 @@ pub fn get_desktop_window_size() -> (i32, i32) {
         let _ = GetWindowRect(desktop_window, &mut rect);
     }
 
-    // 计算桌面窗口的宽度和高度
     let width = rect.right - rect.left;
     let height = rect.bottom - rect.top;
 
-    (width, height)
+    Size {
+        width: (width / 2) as f32,
+        height: (height / 2) as f32,
+    }
 }
 
-pub fn open_file_dialog() -> windows::core::Result<String> {
+fn filename_to_str(file_path: &PathBuf) -> &str {
+    file_path
+        .file_name()
+        .unwrap_or_default()
+        .to_str()
+        .unwrap_or_default()
+}
+
+pub fn is_cab_path(file_path: &PathBuf) -> bool {
+    filename_to_str(file_path).ends_with("cab")
+}
+
+pub fn is_ic_path(file_path: &PathBuf) -> bool {
+    filename_to_str(file_path).ends_with("exe") && filename_to_str(file_path).contains("invc")
+}
+
+pub fn open_file_dialog() -> Result<String, Error> {
     unsafe {
         let _ = CoInitializeEx(Some(null_mut()), COINIT_APARTMENTTHREADED);
         let file_dialog: IFileOpenDialog =
@@ -73,17 +98,17 @@ pub fn open_file_dialog() -> windows::core::Result<String> {
 
 #[derive(Debug, Default, Clone)]
 pub struct CatalogInfo {
-    pub cab_path: String,
-    pub ic_path: String,
+    pub cab_path: PathBuf,
+    pub ic_path: PathBuf,
 }
 
 impl CatalogInfo {
-    fn new(cab_path: String, ic_path: String) -> Self {
+    fn new(cab_path: PathBuf, ic_path: PathBuf) -> Self {
         CatalogInfo { cab_path, ic_path }
     }
 }
 
-pub fn get_catalog_and_ic_paths(current_dir: PathBuf) -> Result<CatalogInfo, CatalogError> {
+pub async fn get_catalog_and_ic_paths(current_dir: PathBuf) -> Result<CatalogInfo, CatalogError> {
     println!("{:?}", current_dir);
     let mut cab_files = Vec::new();
     let mut exe_files = Vec::new();
@@ -92,11 +117,12 @@ pub fn get_catalog_and_ic_paths(current_dir: PathBuf) -> Result<CatalogInfo, Cat
         .filter_map(Result::ok)
         .filter(|e| !e.file_type().is_dir())
     {
-        let f_name = String::from(entry.path().to_string_lossy());
-        if f_name.ends_with(".cab") {
-            cab_files.push(f_name);
-        } else if f_name.ends_with(".exe") && f_name.to_lowercase().contains("invc") {
-            exe_files.push(f_name);
+        let file_path = entry.path().to_path_buf();
+        // let f_name = String::from(entry.path().to_string_lossy());
+        if is_cab_path(&file_path) {
+            cab_files.push(file_path);
+        } else if is_ic_path(&file_path) {
+            exe_files.push(file_path);
         }
     }
     println!("get_catalog_and_ic_paths--{:?}-{:?}", cab_files, exe_files);
@@ -118,8 +144,8 @@ pub fn get_catalog_and_ic_paths(current_dir: PathBuf) -> Result<CatalogInfo, Cat
     }
 }
 
-pub fn cab_to_xml(cab_path: &str) -> Result<PathBuf, CatalogError> {
-    let cmd_str = format!("expand.exe -R {cab_path}");
+pub fn cab_to_xml(cab_path: &PathBuf) -> Result<PathBuf, CatalogError> {
+    let cmd_str = format!("expand.exe -R {:?}", cab_path);
     let output = Command::new("cmd")
         // .creation_flags(CREATE_NO_WINDOW.0)
         .arg("/c")
@@ -131,7 +157,7 @@ pub fn cab_to_xml(cab_path: &str) -> Result<PathBuf, CatalogError> {
         return Err(CatalogError::ParseError("cmd command failed".into()));
     }
 
-    let xml_path = format!("{}.xml", cab_path.trim_end_matches(".cab"));
+    let xml_path = format!("{}.xml", filename_to_str(cab_path).trim_end_matches(".cab"));
     Ok(xml_path.into())
 }
 
@@ -314,14 +340,12 @@ pub fn get_hash_sha384(xml_path: PathBuf) -> Result<String, std::io::Error> {
     let base64 = BASE64.encode(&hash[..]);
     let base64_str = match base64.strip_suffix("=") {
         Some(temp) => format!(
-            r#"{{"CatalogHashValues":[{{"Key":"{}","Value":"{}"}}]}}"#,
-            xml_path.to_string_lossy(),
-            temp
+            r#"{{"CatalogHashValues":[{{"Key":{:?},"Value":"{}"}}]}}"#,
+            xml_path, temp
         ),
         None => format!(
-            r#"{{"CatalogHashValues":[{{"Key":"{}","Value":"{}"}}]}}"#,
-            xml_path.to_string_lossy(),
-            base64
+            r#"{{"CatalogHashValues":[{{"Key":{:?},"Value":"{}"}}]}}"#,
+            xml_path, base64
         ),
     };
     println!("get_hash_sha384--{}", base64_str);
@@ -398,8 +422,8 @@ pub fn get_cur_path() -> PathBuf {
     })
 }
 
-fn handle() -> Result<(), CatalogError> {
-    let catalog_info = get_catalog_and_ic_paths(get_cur_path())?;
+async fn handle() -> Result<(), CatalogError> {
+    let catalog_info = get_catalog_and_ic_paths(get_cur_path()).await?;
     let xml_path = cab_to_xml(&catalog_info.cab_path)?;
     let new_xml_path = handle_xml(xml_path)?;
     let hash = get_hash_sha384(new_xml_path)?;

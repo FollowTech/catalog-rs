@@ -5,6 +5,10 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum CatalogError {
     #[error("No .cab file and invc.exe file found")]
+    SelectedIcFileError,
+    #[error("No .cab file and invc.exe file found")]
+    SelectedCabFileError,
+    #[error("No .cab file and invc.exe file found")]
     NoFilesFound,
 
     #[error("Multiple .cab and invc.exe files found")]

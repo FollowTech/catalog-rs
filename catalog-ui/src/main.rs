@@ -1,5 +1,5 @@
 // #![windows_subsystem = "windows"]
-use catalog_lib::{get_cur_path, CatalogInfo};
+use catalog_lib::{get_cur_path, CatalogInfo, WindowSize};
 use iced::{
     alignment::Horizontal,
     theme::Palette,
@@ -7,7 +7,7 @@ use iced::{
     Alignment::Center,
     Background, Border, Element,
     Length::Fill,
-    Task, Theme,
+    Size, Task, Theme,
 };
 
 #[derive(Debug)]
@@ -18,10 +18,10 @@ enum Catalog {
 
 #[derive(Debug, Default, Clone)]
 struct State {
-    size: (f32, f32),
+    size: Size,
     title: String,
-    catalog_info: CatalogInfo, // dirty: bool,
-    error: String,             // saving: bool,
+    catalog_info: CatalogInfo,
+    error: String,
 }
 
 #[derive(Debug, Clone)]
@@ -40,14 +40,14 @@ enum Message {
 
 impl State {
     async fn load() -> State {
-        let paths = catalog_lib::get_catalog_and_ic_paths(get_cur_path());
+        let paths = catalog_lib::get_catalog_and_ic_paths(get_cur_path()).await;
         // let paths: Result<(String, String), CatalogError> = Ok(("s".into(), "ss".into()));
-        let (width, height) = catalog_lib::get_desktop_window_size();
+        let size = catalog_lib::get_window_size();
         match paths {
             Ok(catalog_info) => State {
-                catalog_info: catalog_info,
+                catalog_info,
                 title: "Welcome to the Home Page".into(),
-                size: (width as f32, height as f32),
+                size,
                 ..Default::default()
             },
             Err(e) => {
@@ -79,6 +79,7 @@ impl Catalog {
                 // text_input::focus("new-task")
             }
             Catalog::Loaded(state) => {
+                if !state.error.is_empty() {}
                 let command = match message {
                     // Message::InputCatalogPathChanged(catalog_path) => {
                     //     state.catalog_path = catalog_path;
@@ -142,7 +143,7 @@ impl Catalog {
                     column![
                         text("Welcome to the Home Page")
                             .width(Fill)
-                            .height(size.1 / 10.0)
+                            .height(size.height / 2.0)
                             .color([0.5, 0.5, 0.5])
                             .align_x(Center), // .on_submit(Message::CreateTask),
                         row!(
@@ -212,19 +213,20 @@ impl Catalog {
     // }
 }
 
-fn handle_file_selection(path: &mut String) -> Task<Message> {
+fn cab_file_selection(path: &mut String) {
+    catalog_lib::open_file_dialog()?
     match catalog_lib::open_file_dialog() {
         Ok(file_path) => {
             println!("{}", file_path);
             *path = file_path;
-            Task::none()
         }
         Err(e) => {
             eprintln!("Error opening file dialog: {}", e);
-            Task::none()
         }
     }
 }
+
+fn ic_file_selection(path:&mut String){}
 
 fn loading_message<'a>() -> Element<'a, Message> {
     center(text("Loading...").width(Fill).align_x(Center).size(50)).into()
@@ -232,7 +234,7 @@ fn loading_message<'a>() -> Element<'a, Message> {
 
 /// 主函数
 fn main() -> iced::Result {
-    let (screen_width, screen_height) = catalog_lib::get_desktop_window_size();
+    let windows_size = catalog_lib::get_window_size();
     // iced::application("Catalog", update, view)
     //     .window(Settings {
     //         size: Size::new((screen_width / 2) as f32, (screen_height / 2) as f32),
@@ -244,7 +246,7 @@ fn main() -> iced::Result {
     iced::application("Catalog", Catalog::update, Catalog::view)
         // .subscription(Todos::subscription)
         // .font(include_bytes!("../fonts/icons.ttf").as_slice())
-        .window_size(((screen_width / 2) as f32, (screen_height / 2) as f32))
+        .window_size(windows_size)
         .theme(Catalog::theme)
         .run_with(Catalog::new)
 }
