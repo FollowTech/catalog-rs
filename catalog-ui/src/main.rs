@@ -1,5 +1,7 @@
+use std::path::PathBuf;
+
 // #![windows_subsystem = "windows"]
-use catalog_lib::{get_cur_path, CatalogInfo, WindowSize};
+use catalog_lib::{get_cur_path, CatalogInfo};
 use iced::{
     alignment::Horizontal,
     theme::Palette,
@@ -29,8 +31,9 @@ enum Message {
     Loaded(State),
     GoToSelectCatalog,
     GoToSeleceIc,
+    CatalogChanged,
     StartUpdate,
-    ButtonClicked(()),
+    ButtonClicked(State),
     // CreateTask,
     // FilterChanged(Filter),
     // TaskMessage(usize, TaskMessage),
@@ -51,10 +54,24 @@ impl State {
                 ..Default::default()
             },
             Err(e) => {
-                println!("Error: {}", e);
+                println!("load Error: {}", e);
                 State {
                     error: e.to_string(),
                     ..Default::default()
+                }
+            }
+        }
+    }
+
+    async fn process(&self) -> State {
+        let result = catalog_lib::handle(&self.catalog_info).await;
+        match result {
+            Ok(_) => self.clone(),
+            Err(e) => {
+                println!("process Error: {}", e);
+                State {
+                    error: e.to_string(),
+                    ..self.clone()
                 }
             }
         }
@@ -79,30 +96,32 @@ impl Catalog {
                 // text_input::focus("new-task")
             }
             Catalog::Loaded(state) => {
-                if !state.error.is_empty() {}
+                println!("Catalog-update-Catalog::Loaded(state)--{:?}", state);
                 let command = match message {
-                    // Message::InputCatalogPathChanged(catalog_path) => {
-                    //     state.catalog_path = catalog_path;
-
-                    //     Task::none()
-                    // }
-                    // Message::InputIcPathChanged(ic_path) => {
-                    //     state.ic_path = ic_path;
-                    //     Task::none()
-                    // }
-                    // Message::Loaded(state) => todo!(),
                     Message::GoToSelectCatalog => {
-                        handle_file_selection(&mut state.catalog_info.cab_path)
+                        file_selection(&mut state.catalog_info.cab_path, &mut state.error)
                     }
-                    Message::GoToSeleceIc => handle_file_selection(&mut state.catalog_info.ic_path),
+                    Message::GoToSeleceIc => {
+                        file_selection(&mut state.catalog_info.ic_path, &mut state.error)
+                    }
+                    Message::CatalogChanged => {
+                        match catalog_lib::check_catalog_info(&state.catalog_info) {
+                            Ok(_) => {
+                                state.error = Default::default();
+                                Task::done(Message::StartUpdate)
+                            }
+                            Err(e) => {
+                                *(&mut state.error) = e.to_string();
+                                Task::none()
+                            }
+                        }
+                    }
                     Message::StartUpdate => {
-                        Task::perform(catalog_lib::process(), Message::ButtonClicked)
+                        let state = state.clone();
+                        Task::perform(async move { state.process().await }, Message::ButtonClicked)
                     }
                     // Message::GoToHomePage => todo!(),
-                    Message::ButtonClicked(()) => {
-                        println!("Button Clicked");
-                        Task::none()
-                    }
+                    Message::ButtonClicked(new_state) => Task::none(),
                     _ => {
                         println!("ss");
                         Task::none()
@@ -149,7 +168,7 @@ impl Catalog {
                         row!(
                             text_input(
                                 "请选择你的catalog cab文件?",
-                                catalog_info.cab_path.as_str()
+                                catalog_info.cab_path.to_str().unwrap_or("")
                             )
                             // .on_input(Message1::InputCatalogPathChanged)
                             .style(border_sytle)
@@ -160,17 +179,20 @@ impl Catalog {
                         )
                         .spacing(20),
                         row!(
-                            text_input("请选择你的ic文件?", catalog_info.ic_path.as_str())
-                                // .on_input(Message::InputIcPathChanged)
-                                // .on_submit(Message::CreateTask)
-                                .style(border_sytle)
-                                .align_x(Center),
+                            text_input(
+                                "请选择你的ic文件?",
+                                catalog_info.ic_path.to_str().unwrap_or("")
+                            )
+                            // .on_input(Message::InputIcPathChanged)
+                            // .on_submit(Message::CreateTask)
+                            .style(border_sytle)
+                            .align_x(Center),
                             button(text("IC").align_x(Horizontal::Center))
                                 .width(100)
                                 .on_press(Message::GoToSeleceIc),
                         )
                         .spacing(20),
-                        button(text("Start Update")).on_press(Message::StartUpdate),
+                        button(text("Start Update")).on_press(Message::CatalogChanged),
                         text(error).color([1.0, 0.0, 0.0])
                     ]
                     .align_x(Horizontal::Center)
@@ -213,20 +235,18 @@ impl Catalog {
     // }
 }
 
-fn cab_file_selection(path: &mut String) {
-    catalog_lib::open_file_dialog()?
+fn file_selection(path: &mut PathBuf, error: &mut String) -> Task<Message> {
     match catalog_lib::open_file_dialog() {
         Ok(file_path) => {
-            println!("{}", file_path);
             *path = file_path;
+            Task::done(Message::CatalogChanged)
         }
         Err(e) => {
-            eprintln!("Error opening file dialog: {}", e);
+            *error = e.to_string();
+            Task::done(Message::CatalogChanged)
         }
     }
 }
-
-fn ic_file_selection(path:&mut String){}
 
 fn loading_message<'a>() -> Element<'a, Message> {
     center(text("Loading...").width(Fill).align_x(Center).size(50)).into()
